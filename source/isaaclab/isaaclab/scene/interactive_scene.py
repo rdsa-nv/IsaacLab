@@ -37,7 +37,10 @@ from isaaclab.terrains import TerrainImporter, TerrainImporterCfg
 
 # Note: This is a temporary import for the VisuoTactileSensorCfg class.
 # It will be removed once the VisuoTactileSensor class is added to the core Isaac Lab framework.
-from isaaclab_contrib.sensors.tacsl_sensor import VisuoTactileSensorCfg
+try:
+    from isaaclab_contrib.sensors.tacsl_sensor import VisuoTactileSensorCfg
+except ImportError:
+    VisuoTactileSensorCfg = None
 
 from .interactive_scene_cfg import InteractiveSceneCfg
 
@@ -705,7 +708,11 @@ class InteractiveScene:
 
     def _add_entities_from_cfg(self):  # noqa: C901
         """Add scene entities from the config."""
-        from isaaclab_physx.assets import DeformableObjectCfg, SurfaceGripperCfg  # noqa: PLC0415
+        try:
+            from isaaclab_physx.assets import DeformableObjectCfg, SurfaceGripperCfg  # noqa: PLC0415
+        except ImportError:
+            DeformableObjectCfg = None
+            SurfaceGripperCfg = None
 
         # store paths that are in global collision filter
         self._global_prim_paths = list()
@@ -753,7 +760,7 @@ class InteractiveScene:
                 self._terrain = asset_cfg.class_type(asset_cfg)
             elif isinstance(asset_cfg, ArticulationCfg):
                 self._articulations[asset_name] = asset_cfg.class_type(asset_cfg)
-            elif isinstance(asset_cfg, DeformableObjectCfg):
+            elif DeformableObjectCfg is not None and isinstance(asset_cfg, DeformableObjectCfg):
                 self._deformable_objects[asset_name] = asset_cfg.class_type(asset_cfg)
             elif isinstance(asset_cfg, RigidObjectCfg):
                 self._rigid_objects[asset_name] = asset_cfg.class_type(asset_cfg)
@@ -775,7 +782,7 @@ class InteractiveScene:
                     if hasattr(rigid_object_cfg, "collision_group") and rigid_object_cfg.collision_group == -1:
                         asset_paths = sim_utils.find_matching_prim_paths(rigid_object_cfg.prim_path)
                         self._global_prim_paths += asset_paths
-            elif isinstance(asset_cfg, SurfaceGripperCfg):
+            elif SurfaceGripperCfg is not None and isinstance(asset_cfg, SurfaceGripperCfg):
                 # add surface grippers to scene
                 self._surface_grippers[asset_name] = asset_cfg.class_type(asset_cfg)
             elif isinstance(asset_cfg, SensorBaseCfg):
@@ -790,7 +797,7 @@ class InteractiveScene:
                     asset_cfg.filter_prim_paths_expr = [
                         p.format(ENV_REGEX_NS=self.env_regex_ns) for p in asset_cfg.filter_prim_paths_expr
                     ]
-                elif isinstance(asset_cfg, VisuoTactileSensorCfg):
+                elif VisuoTactileSensorCfg is not None and isinstance(asset_cfg, VisuoTactileSensorCfg):
                     if hasattr(asset_cfg, "camera_cfg") and asset_cfg.camera_cfg is not None:
                         asset_cfg.camera_cfg.prim_path = asset_cfg.camera_cfg.prim_path.format(
                             ENV_REGEX_NS=self.env_regex_ns

@@ -8,11 +8,20 @@ from __future__ import annotations
 from dataclasses import MISSING, field
 from typing import TYPE_CHECKING, Literal
 
-from isaaclab_physx.renderers import IsaacRtxRendererCfg
-
 from isaaclab.renderers import RendererCfg
 from isaaclab.sim import FisheyeCameraCfg, PinholeCameraCfg
 from isaaclab.utils import configclass
+
+
+def _default_renderer_cfg() -> RendererCfg:
+    """Lazy default: prefer IsaacRtxRendererCfg when isaaclab_physx is installed."""
+    try:
+        from isaaclab_physx.renderers import IsaacRtxRendererCfg
+
+        return IsaacRtxRendererCfg()
+    except ImportError:
+        return RendererCfg()
+
 
 from ..sensor_base_cfg import SensorBaseCfg
 
@@ -149,5 +158,5 @@ class CameraCfg(SensorBaseCfg):
 
     """
 
-    renderer_cfg: RendererCfg = field(default_factory=IsaacRtxRendererCfg)
+    renderer_cfg: RendererCfg = field(default_factory=_default_renderer_cfg)
     """Renderer configuration for camera sensor."""

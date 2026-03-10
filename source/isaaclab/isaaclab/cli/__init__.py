@@ -37,20 +37,24 @@ def cli() -> None:
         const="all",
         help=(
             "Install Isaac Lab sub-packages and RL frameworks.\n"
-            "Accepts a comma-separated list of sub-package names, one of the RL frameworks, or a special value.\n"
+            "Accepts a comma-separated list of sub-package names, RL frameworks, and extras.\n"
             "\n"
             "Sub-packages: assets, physx, contrib, mimic, newton, rl, tasks, teleop, visualizers.\n"
-            "Use -i ovrtx to install the ovrtx dependency for isaaclab_ov.\n"
-            "Visualizer selectors: visualizers[all|kit|newton|rerun|viser].\n"
             "RL frameworks: rl_games, rsl_rl, sb3, skrl, robomimic.\n"
+            "Extras: isaacsim, ovrtx.\n"
+            "Visualizer selectors: visualizers[all|kit|newton|rerun|viser].\n"
             "\n"
-            "Passing an RL framework name installs all sub-packages + that framework.\n"
+            "Items can be freely mixed, e.g. -i newton,physx,tasks,assets,rsl_rl,isaacsim\n"
+            "\n"
+            "Passing a single RL framework name installs all sub-packages + that framework.\n"
             "\n"
             "Special values:\n"
             "- all  - Install all sub-packages + all RL frameworks (default).\n"
             "- none - Install only the core 'isaaclab' package.\n"
             "- <empty> (-i or --install without value) - Install all sub-packages + all RL frameworks.\n"
             "- quote visualizer selectors in bash, e.g. --install 'visualizers[rerun]'.\n"
+            "\n"
+            "Uses uv pip when uv is available in a virtual environment.\n"
         ),
     )
     parser.add_argument(

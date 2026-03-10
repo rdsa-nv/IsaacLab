@@ -18,6 +18,18 @@ from ..utils import (
 from .misc import command_vscode_settings
 
 
+def _use_uv() -> bool:
+    """Check if uv should be used for pip operations."""
+    return bool(shutil.which("uv") and os.environ.get("VIRTUAL_ENV"))
+
+
+def _get_pip_cmd() -> list[str]:
+    """Return the base pip command prefix, preferring uv pip in a virtual environment."""
+    if _use_uv():
+        return ["uv", "pip"]
+    return [extract_python_exe(), "-m", "pip"]
+
+
 def _install_system_deps() -> None:
     """install system dependencies"""
     if is_windows():
@@ -47,7 +59,7 @@ def _install_system_deps() -> None:
 
 def _ensure_cuda_torch() -> None:
     """Ensure correct PyTorch and CUDA versions are installed."""
-    python_exe = extract_python_exe()
+    pip_cmd = _get_pip_cmd()
 
     # Base index for torch.
     base_index = "https://download.pytorch.org/whl"
@@ -70,13 +82,7 @@ def _ensure_cuda_torch() -> None:
     current_ver = ""
     try:
         result = run_command(
-            [
-                python_exe,
-                "-m",
-                "pip",
-                "show",
-                "torch",
-            ],
+            [*pip_cmd, "show", "torch"],
             capture_output=True,
             text=True,
             check=False,
@@ -97,32 +103,13 @@ def _ensure_cuda_torch() -> None:
     # Clean install torch.
     print_info(f"Installing torch=={torch_ver} and torchvision=={tv_ver} ({cuda_tag}) from {index_url}...")
 
-    run_command(
-        [
-            python_exe,
-            "-m",
-            "pip",
-            "uninstall",
-            "-y",
-            "torch",
-            "torchvision",
-            "torchaudio",
-        ],
-        check=False,
-    )
+    uninstall_cmd = [*pip_cmd, "uninstall"]
+    if not _use_uv():
+        uninstall_cmd.append("-y")
+    uninstall_cmd.extend(["torch", "torchvision", "torchaudio"])
+    run_command(uninstall_cmd, check=False)
 
-    run_command(
-        [
-            python_exe,
-            "-m",
-            "pip",
-            "install",
-            "--index-url",
-            index_url,
-            f"torch=={torch_ver}",
-            f"torchvision=={tv_ver}",
-        ]
-    )
+    run_command([*pip_cmd, "install", "--index-url", index_url, f"torch=={torch_ver}", f"torchvision=={tv_ver}"])
 
 
 # Valid sub-package names that can be passed to --install.
@@ -222,7 +209,7 @@ def _install_isaaclab_extensions(
         exclude: Optional set of source directory names to skip even when
             *extensions* is ``None``.
     """
-    python_exe = extract_python_exe()
+    pip_cmd = _get_pip_cmd()
     source_dir = ISAACLAB_ROOT / "source"
 
     if not source_dir.exists():
@@ -248,28 +235,18 @@ def _install_isaaclab_extensions(
         print_info(f"Installing extension: {item.name}")
         extras_suffix = (extension_extras or {}).get(item.name, "")
         install_target = f"{item}{extras_suffix}"
-        run_command(
-            [
-                python_exe,
-                "-m",
-                "pip",
-                "install",
-                "--editable",
-                install_target,
-            ]
-        )
+        run_command([*pip_cmd, "install", "--editable", install_target])
 
 
 def _install_ovrtx_dependency() -> None:
     """Install the ovrtx dependency (for use with isaaclab_ov)."""
-    python_exe = extract_python_exe()
     print_info("Installing ovrtx dependency for isaaclab_ov...")
-    run_command([python_exe, "-m", "pip", "install", OVRTX_PIP_SPEC])
+    run_command([*_get_pip_cmd(), "install", OVRTX_PIP_SPEC])
 
 
 def _install_no_deps_extensions() -> None:
     """Install extensions listed in INSTALL_NO_DEPS_SUBPACKAGES with --no-deps."""
-    python_exe = extract_python_exe()
+    pip_cmd = _get_pip_cmd()
     source_dir = ISAACLAB_ROOT / "source"
     for short_name in INSTALL_NO_DEPS_SUBPACKAGES:
         pkg_name = f"isaaclab_{short_name}"
@@ -277,17 +254,7 @@ def _install_no_deps_extensions() -> None:
         if not (pkg_path.is_dir() and (pkg_path / "setup.py").exists()):
             continue
         print_info(f"Installing {pkg_name} (no dependencies) for importability...")
-        run_command(
-            [
-                python_exe,
-                "-m",
-                "pip",
-                "install",
-                "--editable",
-                str(pkg_path),
-                "--no-deps",
-            ]
-        )
+        run_command([*pip_cmd, "install", "--editable", str(pkg_path), "--no-deps"])
 
 
 def _install_extra_frameworks(framework_name: str = "all") -> None:
@@ -296,7 +263,7 @@ def _install_extra_frameworks(framework_name: str = "all") -> None:
     Args:
         framework_name: Framework extra to install (for example ``all`` or ``none``).
     """
-    python_exe = extract_python_exe()
+    pip_cmd = _get_pip_cmd()
 
     extras = ""
     if framework_name != "none":
@@ -310,26 +277,8 @@ def _install_extra_frameworks(framework_name: str = "all") -> None:
     print_info(f"Installing rl-framework: {framework_name}")
 
     # Install the learning frameworks specified.
-    run_command(
-        [
-            python_exe,
-            "-m",
-            "pip",
-            "install",
-            "-e",
-            f"{ISAACLAB_ROOT}/source/isaaclab_rl{extras}",
-        ]
-    )
-    run_command(
-        [
-            python_exe,
-            "-m",
-            "pip",
-            "install",
-            "-e",
-            f"{ISAACLAB_ROOT}/source/isaaclab_mimic{extras}",
-        ]
-    )
+    run_command([*pip_cmd, "install", "-e", f"{ISAACLAB_ROOT}/source/isaaclab_rl{extras}"])
+    run_command([*pip_cmd, "install", "-e", f"{ISAACLAB_ROOT}/source/isaaclab_mimic{extras}"])
 
 
 def command_install(install_type: str = "all") -> None:
@@ -361,6 +310,8 @@ def command_install(install_type: str = "all") -> None:
         print_info(f"Using conda environment: {os.environ['CONDA_PREFIX']}")
 
     print_info(f"Python executable: {python_exe}")
+    if _use_uv():
+        print_info("Using uv for package installation.")
 
     # Decide which source directories (source/isaaclab/*) to install.
     # "all"        : install everything + all RL frameworks (no-deps extensions installed separately with --no-deps)
@@ -387,16 +338,24 @@ def command_install(install_type: str = "all") -> None:
         extension_extras = {"isaaclab_visualizers": "[all]"}
         framework_type = install_type
     else:
-        # Parse comma-separated sub-package names into source directory names.
+        # Parse comma-separated items: sub-packages, RL frameworks, isaacsim.
         extensions = ["isaaclab"]  # core is always required
         exclude = None  # explicit selection — no exclusions
         extension_extras = {}
+        rl_frameworks: list[str] = []
+        install_isaacsim = False
         for name in _split_install_items(install_type):
             visualizer_extras = _parse_visualizer_selector(name)
             if visualizer_extras is not None:
                 if "isaaclab_visualizers" not in extensions:
                     extensions.append("isaaclab_visualizers")
                 extension_extras["isaaclab_visualizers"] = visualizer_extras
+                continue
+            if name == "isaacsim":
+                install_isaacsim = True
+                continue
+            if name in VALID_RL_FRAMEWORKS:
+                rl_frameworks.append(name)
                 continue
             if name in VALID_ISAACLAB_SUBPACKAGES:
                 if name == "ovrtx":
@@ -408,13 +367,19 @@ def command_install(install_type: str = "all") -> None:
                 else:
                     extensions.append(f"isaaclab_{name}")
             else:
-                valid = sorted(VALID_ISAACLAB_SUBPACKAGES) + sorted(VALID_RL_FRAMEWORKS)
+                valid = sorted(VALID_ISAACLAB_SUBPACKAGES) + sorted(VALID_RL_FRAMEWORKS) + ["isaacsim"]
                 print_warning(f"Unknown sub-package '{name}'. Valid values: {', '.join(valid)}. Skipping.")
-        framework_type = "none"  # RL frameworks not applied in selective mode
+        # Add isaacsim as an extra on the core isaaclab package.
+        if install_isaacsim:
+            extension_extras["isaaclab"] = "[isaacsim]"
+        # Set framework type from detected RL frameworks.
+        framework_type = ",".join(rl_frameworks) if rl_frameworks else "none"
 
     # Configure extra package indexes for NVIDIA and MuJoCo wheels.
     os.environ.setdefault("UV_INDEX", "https://pypi.nvidia.com")
+    os.environ.setdefault("UV_EXTRA_INDEX_URL", "https://pypi.nvidia.com")
     os.environ.setdefault("PIP_EXTRA_INDEX_URL", "https://pypi.nvidia.com")
+    os.environ.setdefault("UV_FIND_LINKS", "https://py.mujoco.org/")
     os.environ.setdefault("PIP_FIND_LINKS", "https://py.mujoco.org/")
 
     # if on ARM arch, temporarily clear LD_PRELOAD
@@ -446,12 +411,15 @@ def command_install(install_type: str = "all") -> None:
             )
 
     try:
-        # Upgrade pip first to avoid compatibility issues.
-        print_info("Upgrading pip...")
-        run_command([python_exe, "-m", "pip", "install", "--upgrade", "pip"])
+        pip_cmd = _get_pip_cmd()
+
+        if not _use_uv():
+            # Upgrade pip first to avoid compatibility issues.
+            print_info("Upgrading pip...")
+            run_command([*pip_cmd, "install", "--upgrade", "pip"])
 
         # Pin setuptools to avoid issues with pkg_resources removal in 82.0.0.
-        run_command([python_exe, "-m", "pip", "install", "setuptools<82.0.0"])
+        run_command([*pip_cmd, "install", "setuptools<82.0.0"])
 
         # Install pytorch (version based on arch).
         _ensure_cuda_torch()

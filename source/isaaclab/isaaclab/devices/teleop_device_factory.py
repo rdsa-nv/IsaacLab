@@ -11,4 +11,7 @@
     :func:`create_teleop_device`.
 """
 
-from isaaclab_teleop.deprecated.teleop_device_factory import *  # noqa: F401,F403
+try:
+    from isaaclab_teleop.deprecated.teleop_device_factory import *  # noqa: F401,F403
+except ImportError:
+    pass
