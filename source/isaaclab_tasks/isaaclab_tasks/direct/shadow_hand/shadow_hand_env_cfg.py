@@ -3,8 +3,16 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg
-from isaaclab_physx.physics import PhysxCfg
+try:
+    from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg
+except ImportError:
+    MJWarpSolverCfg = None
+    NewtonCfg = None
+
+try:
+    from isaaclab_physx.physics import PhysxCfg
+except ImportError:
+    PhysxCfg = None
 
 import isaaclab.envs.mdp as mdp
 import isaaclab.sim as sim_utils
@@ -256,7 +264,7 @@ class PhysicsCfg(PresetCfg):
         bounce_threshold_velocity=0.2,
         gpu_max_rigid_contact_count=2**23,
         gpu_max_rigid_patch_count=2**23,
-    )
+    ) if PhysxCfg is not None else None
     newton = NewtonCfg(
         solver_cfg=MJWarpSolverCfg(
             solver="newton",
@@ -270,8 +278,8 @@ class PhysicsCfg(PresetCfg):
         ),
         num_substeps=2,
         debug_mode=False,
-    )
-    default = physx
+    ) if NewtonCfg is not None else None
+    default = physx if physx is not None else newton
 
 
 @configclass
