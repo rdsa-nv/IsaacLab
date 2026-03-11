@@ -93,10 +93,10 @@ def _is_kit_camera(node) -> bool:
         return False
     renderer_cfg = getattr(node, "renderer_cfg", None)
     if renderer_cfg is None:
-        return True
+        return False
     if isinstance(renderer_cfg, RendererCfg):
         return renderer_cfg.renderer_type in ("default", "isaac_rtx")
-    return True
+    return False
 
 
 def compute_kit_requirements(

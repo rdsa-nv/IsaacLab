@@ -46,13 +46,15 @@ INSTALL_REQUIRES = [
     "pytest",
     "pytest-mock",
     "junitparser",
-    "coverage==7.6.1",
+    "coverage>=7.4.4",
     "debugpy>=1.8.20",
     "flatdict==4.0.0",
     "flaky",
     "packaging",
     # Required by pydantic-core/imgui_bundle on Python 3.12 (Sentinel symbol).
-    "typing_extensions>=4.14.0",
+    # On 3.11, isaacsim pins typing-extensions==4.12.2, so only enforce >=4.14 on 3.12+.
+    "typing_extensions>=4.14.0; python_version>='3.12'",
+    "typing_extensions>=4.5; python_version<'3.12'",
     "lazy_loader>=0.4",
 ]
 

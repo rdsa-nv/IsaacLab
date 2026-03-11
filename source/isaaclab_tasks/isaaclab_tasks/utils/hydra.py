@@ -95,6 +95,9 @@ def collect_presets(cfg, path: str = "") -> dict:
         preset_dict = {}
         for field_name in cfg.__dataclass_fields__:
             preset_dict[field_name] = getattr(cfg, field_name)
+        required_packages = getattr(type(cfg), "__required_packages__", None)
+        if required_packages:
+            preset_dict["__required_packages__"] = dict(required_packages)
         result[path] = preset_dict
         for alt in preset_dict.values():
             if hasattr(alt, "__dataclass_fields__"):
@@ -139,6 +142,9 @@ def collect_presets(cfg, path: str = "") -> dict:
                 preset_dict = {}
                 for field_name in value.__dataclass_fields__:
                     preset_dict[field_name] = getattr(value, field_name)
+                required_packages = getattr(type(value), "__required_packages__", None)
+                if required_packages:
+                    preset_dict["__required_packages__"] = dict(required_packages)
                 result[child_path] = preset_dict
                 # Recurse into each alternative to find nested PresetCfg
                 for alt in preset_dict.values():
@@ -427,14 +433,16 @@ def apply_overrides(
     # --- Phase 1: Determine selected preset name for every path ---------------
     # Start with explicit path selections
     resolved: dict[str, tuple[str, str, str]] = {}  # full_path -> (sec, path, name)
+    explicitly_selected: set[str] = set()
     for sec, path, name in preset_sel:
         if path not in presets.get(sec, {}):
             raise ValueError(f"Unknown preset group: {sec}.{path}")
         if name not in presets[sec][path]:
-            avail = list(presets[sec][path].keys())
+            avail = [k for k in presets[sec][path] if not k.startswith("__")]
             raise ValueError(f"Unknown preset '{name}' for {sec}.{path}. Available: {avail}")
         full_path = f"{sec}.{path}" if path else sec
         resolved[full_path] = (sec, path, name)
+        explicitly_selected.add(full_path)
 
     # Apply global presets (error on conflict)
     applied_by: dict[str, str] = {}
@@ -451,6 +459,7 @@ def apply_overrides(
                     applied_by[full_path] = name
                     if full_path not in resolved:
                         resolved[full_path] = (sec, path, name)
+                        explicitly_selected.add(full_path)
 
     # Fill remaining paths with "default" (if available)
     for sec in ("env", "agent"):
@@ -463,7 +472,24 @@ def apply_overrides(
     for full_path in sorted(resolved, key=lambda fp: fp.count(".")):
         sec, path, name = resolved[full_path]
         if cfgs[sec] is not None and _path_reachable(sec, path):
-            _apply_node(sec, path, presets[sec][path][name])
+            preset_value = presets[sec][path][name]
+            if preset_value is None and full_path in explicitly_selected:
+                avail = [
+                    k
+                    for k, v in presets[sec][path].items()
+                    if v is not None and k != "default" and not k.startswith("__")
+                ]
+                packages = presets[sec][path].get("__required_packages__", {})
+                pkg = packages.get(name)
+                if pkg:
+                    hint = f" Install it with: ./isaaclab.sh -i {pkg}"
+                else:
+                    hint = " The required package may not be installed."
+                raise ValueError(
+                    f"Preset '{name}' for '{full_path}' is not available (resolved to None)."
+                    f"{hint} Available presets: {avail}"
+                )
+            _apply_node(sec, path, preset_value)
 
     # 3. Apply scalar overrides within preset paths
     for full_path, val_str in preset_scalar:

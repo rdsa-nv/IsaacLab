@@ -434,6 +434,7 @@ def command_install(install_type: str = "all") -> None:
 
         # Install ovrtx when user requested -i ovrtx (the specific dependency for isaaclab_ov).
         if install_ovrtx:
+            _install_no_deps_extensions()
             _install_ovrtx_dependency()
 
         # Install the python packages for supported reinforcement learning frameworks.

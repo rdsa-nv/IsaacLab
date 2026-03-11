@@ -260,6 +260,11 @@ class ShadowHandSceneCfg(PresetCfg):
 
 @configclass
 class PhysicsCfg(PresetCfg):
+    __required_packages__ = {
+        "physx": "physx",
+        "newton": "newton",
+    }
+
     physx = PhysxCfg(
         bounce_threshold_velocity=0.2,
         gpu_max_rigid_contact_count=2**23,

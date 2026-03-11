@@ -35,6 +35,13 @@ except ImportError:
 
 @configclass
 class MultiBackendRendererCfg(PresetCfg):
+    __required_packages__ = {
+        "default": "physx",
+        "newton_renderer": "newton",
+        "ovrtx_renderer": "ovrtx",
+        "isaacsim_rtx_renderer": "physx",
+    }
+
     default: RendererCfg | None = _physx_default
     newton_renderer: RendererCfg | None = _newton_default
     ovrtx_renderer: RendererCfg | None = _ovrtx_default
