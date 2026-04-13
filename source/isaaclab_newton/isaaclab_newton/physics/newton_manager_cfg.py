@@ -195,6 +195,114 @@ class FeatherstoneSolverCfg(NewtonSolverCfg):
 
 
 @configclass
+class VBDSolverCfg(NewtonSolverCfg):
+    """An implicit solver using Vertex Block Descent (VBD) for particles and Augmented VBD (AVBD) for rigid bodies.
+
+    This solver supports coupled particle-rigid body systems including cloth, soft bodies, cables,
+    and articulated rigid bodies. It uses soft constraints with adaptive penalty parameters for
+    joints and contacts.
+
+    VBD requires graph coloring for both particles and rigid bodies. The builder's ``color()`` method
+    is called automatically before ``finalize()`` when this solver is selected.
+
+    References:
+        - Anka He Chen, Ziheng Liu, Yin Yang, and Cem Yuksel. 2024. Vertex Block Descent.
+          ACM Trans. Graph. 43, 4, Article 116 (July 2024), 16 pages.
+          https://doi.org/10.1145/3658179
+    """
+
+    solver_type: str = "vbd"
+    """Solver type."""
+
+    iterations: int = 10
+    """Number of VBD iterations per step."""
+
+    friction_epsilon: float = 1e-2
+    """Threshold to smooth small relative velocities in friction computation."""
+
+    integrate_with_external_rigid_solver: bool = False
+    """Whether rigid bodies are integrated by an external solver (one-way coupling).
+
+    When True, VBD will not move rigid bodies, but still computes particle-rigid interaction."""
+
+    # -- Particle parameters --
+
+    particle_enable_self_contact: bool = False
+    """Whether to enable self-contact detection for particles."""
+
+    particle_self_contact_radius: float = 0.2
+    """Distance at which vertex-triangle and edge-edge pairs start to interact."""
+
+    particle_self_contact_margin: float = 0.2
+    """Distance at which self-contact pairs are considered in contact generation.
+
+    Should be larger than ``particle_self_contact_radius``."""
+
+    particle_collision_detection_interval: int = 0
+    """How frequently particle self-contact detection is applied during simulation.
+
+    - ``< 0``: only once before initialization.
+    - ``0``: twice (before and immediately after initialization).
+    - ``n >= 1``: before every n VBD iterations."""
+
+    particle_enable_tile_solve: bool = True
+    """Whether to accelerate the particle solver using tile API (CUDA only)."""
+
+    particle_vertex_contact_buffer_size: int = 32
+    """Preallocation size for each vertex's vertex-triangle collision buffer."""
+
+    particle_edge_contact_buffer_size: int = 64
+    """Preallocation size for each edge's edge-edge collision buffer."""
+
+    particle_topological_contact_filter_threshold: int = 2
+    """Maximum topological distance for self-contact filtering."""
+
+    particle_rest_shape_contact_exclusion_radius: float = 0.0
+    """World-space distance threshold for filtering topologically close primitives."""
+
+    particle_conservative_bound_relaxation: float = 0.85
+    """Relaxation factor for conservative penetration-free projection."""
+
+    # -- Rigid body parameters --
+
+    rigid_avbd_beta: float = 1.0e5
+    """Penalty ramp rate for rigid body constraints (AVBD)."""
+
+    rigid_avbd_gamma: float = 0.99
+    """Warmstart decay for penalty k across timesteps (AVBD)."""
+
+    rigid_contact_k_start: float = 1.0e2
+    """Initial penalty stiffness for body contact constraints (AVBD)."""
+
+    rigid_joint_linear_k_start: float = 1.0e4
+    """Initial penalty seed for linear joint constraints (AVBD)."""
+
+    rigid_joint_angular_k_start: float = 1.0e1
+    """Initial penalty seed for angular joint constraints (AVBD)."""
+
+    rigid_joint_linear_ke: float = 1.0e9
+    """Stiffness cap for non-cable linear joint constraints (AVBD)."""
+
+    rigid_joint_angular_ke: float = 1.0e9
+    """Stiffness cap for non-cable angular joint constraints (AVBD)."""
+
+    rigid_joint_linear_kd: float = 1.0e-2
+    """Rayleigh damping coefficient for non-cable linear joint constraints."""
+
+    rigid_joint_angular_kd: float = 0.0
+    """Rayleigh damping coefficient for non-cable angular joint constraints."""
+
+    rigid_body_contact_buffer_size: int = 64
+    """Max body-body contacts per rigid body for per-body contact lists."""
+
+    rigid_body_particle_contact_buffer_size: int = 256
+    """Max body-particle contacts per rigid body for per-body soft-contact lists."""
+
+    rigid_enable_dahl_friction: bool = False
+    """Enable Dahl hysteresis friction model for cable bending."""
+
+
+@configclass
 class NewtonCfg(PhysicsCfg):
     """Configuration for Newton physics manager.
 

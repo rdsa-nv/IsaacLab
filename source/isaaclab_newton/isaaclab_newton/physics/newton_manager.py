@@ -16,7 +16,7 @@ import warp as wp
 from newton import Axis, CollisionPipeline, Contacts, Control, Model, ModelBuilder, State, eval_fk
 from newton._src.usd.schemas import SchemaResolverNewton, SchemaResolverPhysx
 from newton.sensors import SensorContact as NewtonContactSensor
-from newton.solvers import SolverBase, SolverFeatherstone, SolverMuJoCo, SolverNotifyFlags, SolverXPBD
+from newton.solvers import SolverBase, SolverFeatherstone, SolverMuJoCo, SolverNotifyFlags, SolverVBD, SolverXPBD
 
 from isaaclab.physics import PhysicsEvent, PhysicsManager
 from isaaclab.sim.utils.stage import get_current_stage
@@ -289,6 +289,17 @@ class NewtonManager(PhysicsManager):
         logger.info(f"Finalizing model on device: {device}")
         cls._builder.up_axis = Axis.from_string(cls._up_axis)
         # Set smaller contact margin for manipulation examples (default 10cm is too large)
+
+        # VBD requires graph coloring for both particles and rigid bodies.
+        # Call builder.color() before finalize() to ensure coloring is set up.
+        cfg = PhysicsManager._cfg
+        if cfg is not None:
+            solver_cfg = getattr(cfg, "solver_cfg", None)
+            solver_type = getattr(solver_cfg, "solver_type", None) if solver_cfg else None
+            if solver_type == "vbd":
+                logger.info("VBD solver selected: running builder.color() for particle and body coloring")
+                cls._builder.color()
+
         with Timer(name="newton_finalize_builder", msg="Finalize builder took:"):
             cls._model = cls._builder.finalize(device=device)
             cls._model.set_gravity(cls._gravity_vector)
@@ -455,13 +466,19 @@ class NewtonManager(PhysicsManager):
             elif cls._solver_type == "featherstone":
                 cls._use_single_state = False
                 cls._solver = SolverFeatherstone(cls._model, **cfg_dict)
+            elif cls._solver_type == "vbd":
+                cls._use_single_state = False
+                solver_sig = inspect.signature(SolverVBD.__init__)
+                valid_solver_args = set(solver_sig.parameters.keys()) - {"self", "model"}
+                cfg_dict = {k: v for k, v in cfg_dict.items() if k in valid_solver_args}
+                cls._solver = SolverVBD(cls._model, **cfg_dict)
             else:
                 raise ValueError(f"Invalid solver type: {cls._solver_type}")
 
             # Determine if we need external collision detection
             # - SolverMuJoCo with use_mujoco_contacts=True: uses internal MuJoCo collision detection
             # - SolverMuJoCo with use_mujoco_contacts=False: needs Newton's unified collision pipeline
-            # - Other solvers (XPBD, Featherstone): always need Newton's unified collision pipeline
+            # - Other solvers (XPBD, Featherstone, VBD): always need Newton's unified collision pipeline
             if isinstance(cls._solver, SolverMuJoCo):
                 # Handle both dict and object configs
                 if hasattr(solver_cfg, "use_mujoco_contacts"):
@@ -502,6 +519,8 @@ class NewtonManager(PhysicsManager):
         else:
             contacts = None
 
+        is_vbd = isinstance(cls._solver, SolverVBD)
+
         def step_fn(state_0, state_1):
             cls._solver.step(state_0, state_1, cls._control, contacts, cls._solver_dt)
 
@@ -514,6 +533,11 @@ class NewtonManager(PhysicsManager):
             need_copy_on_last_substep = (cfg is not None and cfg.use_cuda_graph) and cls._num_substeps % 2 == 1  # type: ignore[union-attr]
 
             for i in range(cls._num_substeps):
+                # VBD: update rigid history only on first substep; re-collide each substep
+                if is_vbd:
+                    cls._solver.set_rigid_history_update(i == 0)
+                    if i > 0 and cls._needs_collision_pipeline:
+                        cls._collision_pipeline.collide(cls._state_0, cls._contacts)
                 step_fn(cls._state_0, cls._state_1)
                 if need_copy_on_last_substep and i == cls._num_substeps - 1:
                     cls._state_0.assign(cls._state_1)
@@ -526,7 +550,9 @@ class NewtonManager(PhysicsManager):
             # For newton_contacts (unified pipeline): use locally computed contacts
             # For mujoco_contacts: use class-level _contacts, solver populates it from MuJoCo data
             eval_contacts = contacts if contacts is not None else cls._contacts
-            cls._solver.update_contacts(eval_contacts, cls._state_0)
+            # VBD does not implement update_contacts(); skip force reporting for now.
+            if not is_vbd:
+                cls._solver.update_contacts(eval_contacts, cls._state_0)
             for sensor in cls._newton_contact_sensors.values():
                 sensor.update(cls._state_0, eval_contacts)
 
