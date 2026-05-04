@@ -120,6 +120,8 @@ Table of Contents
    source/overview/reinforcement-learning/index
    source/overview/imitation-learning/index
    source/overview/showroom
+   source/overview/examples_getting_started
+   source/overview/examples_script_reference
    source/overview/simple_agents
 
 

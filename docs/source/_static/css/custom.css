@@ -110,3 +110,225 @@ a {
     text-align: center;
     vertical-align: middle;
 }
+
+/* examples dashboard */
+
+.il-showroom {
+    margin: 1.5rem 0 2.25rem;
+}
+
+.il-showroom-hero {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    min-height: 24rem;
+    overflow: hidden;
+    border: 1px solid var(--pst-color-border);
+    border-radius: 8px;
+    background: var(--pst-color-surface);
+}
+
+.il-showroom-hero img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: brightness(0.55) saturate(1.05);
+}
+
+.il-showroom-hero-copy {
+    position: relative;
+    max-width: 48rem;
+    padding: 2.5rem;
+    color: #ffffff;
+    text-shadow: 0 1px 14px rgba(0, 0, 0, 0.55);
+}
+
+.il-showroom-kicker {
+    margin: 0 0 0.45rem;
+    color: #b6e664;
+    font-size: 0.84rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.il-showroom-lede {
+    max-width: 38rem;
+    margin: 0;
+    color: #ffffff;
+    font-size: 1.35rem;
+    line-height: 1.35;
+}
+
+.il-showroom-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-top: 1.35rem;
+}
+
+.il-showroom-stats span {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0.45rem 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    border-radius: 8px;
+    background: rgba(18, 18, 18, 0.58);
+    color: #ffffff;
+    font-size: 0.86rem;
+}
+
+.il-showroom-stats strong {
+    color: #b6e664;
+    font-size: 1.1rem;
+}
+
+.il-showroom-jump {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 0.85rem;
+}
+
+.il-showroom-jump a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.2rem;
+    padding: 0.38rem 0.72rem;
+    border: 1px solid var(--pst-color-border);
+    border-radius: 8px;
+    background: var(--pst-color-surface);
+    color: var(--pst-color-text-base);
+    font-size: 0.9rem;
+    font-weight: 650;
+}
+
+.il-showroom-jump a:hover,
+.il-showroom-jump a:focus {
+    border-color: var(--pst-color-primary);
+    color: var(--pst-color-primary);
+}
+
+.il-example-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16.5rem, 1fr));
+    gap: 1rem;
+    margin: 1rem 0 2rem;
+}
+
+.il-example-grid-compact {
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.il-example-grid-small {
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+.il-example-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--pst-color-border);
+    border-radius: 8px;
+    background: var(--pst-color-background);
+    box-shadow: 0 0.35rem 1rem color-mix(in srgb, var(--pst-color-shadow), transparent 48%);
+}
+
+.il-example-card-wide {
+    grid-column: span 2;
+}
+
+.il-example-card img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    background: var(--pst-color-surface);
+}
+
+.il-example-card > div {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    padding: 0.95rem;
+}
+
+.il-example-eyebrow {
+    margin: 0 0 0.35rem;
+    color: var(--pst-color-secondary);
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.il-example-card h3 {
+    margin: 0;
+    color: var(--pst-color-text-base);
+    font-size: 1.02rem;
+    line-height: 1.24;
+}
+
+.il-example-card p:not(.il-example-eyebrow) {
+    margin: 0.5rem 0 0.8rem;
+    color: var(--pst-color-text-muted);
+    font-size: 0.91rem;
+    line-height: 1.45;
+}
+
+.il-example-card code,
+.il-command-list code {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    padding: 0.48rem 0.55rem;
+    overflow-x: auto;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border), transparent 25%);
+    border-radius: 6px;
+    background: var(--pst-color-surface);
+    color: var(--pst-color-inline-code);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    white-space: nowrap;
+}
+
+.il-command-list {
+    display: grid;
+    gap: 0.38rem;
+    margin: auto 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.il-command-list li {
+    min-width: 0;
+}
+
+@media (max-width: 960px) {
+    .il-example-card-wide {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 720px) {
+    .il-showroom-hero {
+        min-height: 20rem;
+    }
+
+    .il-showroom-hero-copy {
+        padding: 1.35rem;
+    }
+
+    .il-showroom-lede {
+        font-size: 1.05rem;
+    }
+
+    .il-example-grid,
+    .il-example-grid-compact,
+    .il-example-grid-small {
+        grid-template-columns: 1fr;
+    }
+}
