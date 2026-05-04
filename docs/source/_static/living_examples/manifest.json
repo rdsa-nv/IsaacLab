@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "target": {
+    "project": "Isaac Lab",
+    "version": "3.0.0",
+    "branch": "develop"
+  },
+  "generated_on": "2026-05-04",
+  "runtime_probe": {
+    "status": "blocked_missing_runtime_install",
+    "command": "./isaaclab.sh -p -c \"import isaaclab_tasks; print('isaaclab_tasks import ok')\"",
+    "observed": "ModuleNotFoundError: No module named 'isaaclab_tasks'"
+  },
+  "examples": [
+    {
+      "id": "cartpole-rsl-rl-smoke",
+      "title": "Cartpole checkpoint and rollout",
+      "task": "Isaac-Cartpole-v0",
+      "entry_points": {
+        "train": "scripts/reinforcement_learning/rsl_rl/train.py",
+        "rollout": "scripts/reinforcement_learning/rsl_rl/play.py"
+      },
+      "preview": {
+        "status": "available",
+        "path": "docs/source/_static/tasks/classic/cartpole.jpg"
+      },
+      "build_command": "./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py --task Isaac-Cartpole-v0 --headless --num_envs 256 --max_iterations 2 --video --video_length 120 agent.save_interval=1",
+      "rollout_command": "./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/play.py --task Isaac-Cartpole-v0 --headless --num_envs 64 --video --video_length 180 --load_run <cartpole-run-folder> --checkpoint model_1.pt",
+      "evidence": {
+        "source": {
+          "status": "source_verified",
+          "paths": [
+            "source/isaaclab_tasks/isaaclab_tasks/manager_based/classic/cartpole/__init__.py",
+            "source/isaaclab_tasks/isaaclab_tasks/manager_based/classic/cartpole/agents/rsl_rl_ppo_cfg.py"
+          ]
+        },
+        "smoke_test": {
+          "status": "runtime_pending",
+          "expected_result": "training exits after two RSL-RL iterations"
+        },
+        "rollout": {
+          "status": "runtime_pending",
+          "expected_result": "play exits after video_length steps"
+        },
+        "recording": {
+          "status": "runtime_pending",
+          "expected_paths": [
+            "logs/rsl_rl/cartpole/<run-folder>/videos/train/rl-video-step-0.mp4",
+            "logs/rsl_rl/cartpole/<run-folder>/videos/play/rl-video-step-0.mp4"
+          ]
+        },
+        "checkpoint": {
+          "status": "runtime_pending",
+          "expected_path": "logs/rsl_rl/cartpole/<run-folder>/model_1.pt"
+        }
+      }
+    },
+    {
+      "id": "h1-rough-rsl-rl-play",
+      "title": "H1 rough-terrain rollout",
+      "task": "Isaac-Velocity-Rough-H1-Play-v0",
+      "entry_points": {
+        "demo": "scripts/demos/h1_locomotion.py",
+        "rollout": "scripts/reinforcement_learning/rsl_rl/play.py"
+      },
+      "preview": {
+        "status": "available",
+        "path": "docs/source/_static/demos/h1_locomotion.jpg"
+      },
+      "rollout_command": "./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/play.py --task Isaac-Velocity-Rough-H1-Play-v0 --headless --num_envs 25 --use_pretrained_checkpoint --video --video_length 240",
+      "interactive_command": "./isaaclab.sh -p scripts/demos/h1_locomotion.py",
+      "evidence": {
+        "source": {
+          "status": "source_verified",
+          "paths": [
+            "scripts/demos/h1_locomotion.py",
+            "source/isaaclab_tasks/isaaclab_tasks/manager_based/locomotion/velocity/config/h1/__init__.py",
+            "source/isaaclab_tasks/isaaclab_tasks/manager_based/locomotion/velocity/config/h1/agents/rsl_rl_ppo_cfg.py"
+          ]
+        },
+        "smoke_test": {
+          "status": "runtime_pending",
+          "expected_result": "play script resolves published checkpoint and exits after video_length steps"
+        },
+        "rollout": {
+          "status": "runtime_pending",
+          "expected_result": "policy rollout recorded from published RSL-RL checkpoint"
+        },
+        "recording": {
+          "status": "runtime_pending",
+          "expected_path": "<resolved-checkpoint-dir>/videos/play/rl-video-step-0.mp4"
+        },
+        "checkpoint": {
+          "status": "published_checkpoint",
+          "resolver": "get_published_pretrained_checkpoint(\"rsl_rl\", \"Isaac-Velocity-Rough-H1-v0\")"
+        },
+        "exports": {
+          "status": "runtime_pending",
+          "expected_paths": [
+            "<resolved-checkpoint-dir>/exported/policy.pt",
+            "<resolved-checkpoint-dir>/exported/policy.onnx"
+          ]
+        }
+      }
+    }
+  ]
+}
