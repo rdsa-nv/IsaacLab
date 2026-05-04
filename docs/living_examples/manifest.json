@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "target": {
+    "project": "Isaac Lab",
+    "version": "3.0.0",
+    "branch": "develop"
+  },
+  "generated_on": "2026-05-04",
+  "runtime_probe": {
+    "status": "blocked_missing_runtime_install",
+    "command": "./isaaclab.sh -p -c \"import isaaclab_tasks; print('isaaclab_tasks import ok')\"",
+    "observed": "ModuleNotFoundError: No module named 'isaaclab_tasks'"
+  },
+  "examples": [
+    {
+      "id": "cartpole-rsl-rl-smoke",
+      "title": "Cartpole checkpoint and rollout",
+      "category": "Smallest trainable loop",
+      "task": "Isaac-Cartpole-v0",
+      "image": "../source/_static/tasks/classic/cartpole.jpg",
+      "alt": "Cartpole task in Isaac Lab",
+      "tags": ["RSL-RL", "checkpoint", "video"],
+      "entry_points": {
+        "train": "scripts/reinforcement_learning/rsl_rl/train.py",
+        "rollout": "scripts/reinforcement_learning/rsl_rl/play.py"
+      },
+      "commands": {
+        "build": "./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py --task Isaac-Cartpole-v0 --headless --num_envs 256 --max_iterations 2 --video --video_length 120 agent.save_interval=1",
+        "rollout": "./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/play.py --task Isaac-Cartpole-v0 --headless --num_envs 64 --video --video_length 180 --load_run <cartpole-run-folder> --checkpoint model_1.pt"
+      },
+      "artifacts": [
+        "logs/rsl_rl/cartpole/<run-folder>/model_1.pt",
+        "logs/rsl_rl/cartpole/<run-folder>/videos/train/rl-video-step-0.mp4",
+        "logs/rsl_rl/cartpole/<run-folder>/videos/play/rl-video-step-0.mp4"
+      ],
+      "evidence": [
+        {
+          "name": "Source",
+          "status": "source_verified",
+          "detail": "Task registration and RSL-RL runner config are present in this branch."
+        },
+        {
+          "name": "Smoke test",
+          "status": "runtime_pending",
+          "detail": "Expected to exit after two RSL-RL iterations."
+        },
+        {
+          "name": "Rollout",
+          "status": "runtime_pending",
+          "detail": "Expected to exit after video_length steps."
+        },
+        {
+          "name": "Recording",
+          "status": "runtime_pending",
+          "detail": "Training and playback MP4s should be emitted under the run folder."
+        },
+        {
+          "name": "Preview",
+          "status": "available",
+          "detail": "Static preview image is included in docs/source/_static."
+        },
+        {
+          "name": "Checkpoint",
+          "status": "runtime_pending",
+          "detail": "model_1.pt should be created by the smoke training command."
+        }
+      ]
+    },
+    {
+      "id": "h1-rough-rsl-rl-play",
+      "title": "H1 rough-terrain rollout",
+      "category": "Checkpoint-backed policy preview",
+      "task": "Isaac-Velocity-Rough-H1-Play-v0",
+      "image": "../source/_static/demos/h1_locomotion.jpg",
+      "alt": "H1 locomotion policy in Isaac Lab",
+      "tags": ["RSL-RL", "published checkpoint", "humanoid"],
+      "entry_points": {
+        "demo": "scripts/demos/h1_locomotion.py",
+        "rollout": "scripts/reinforcement_learning/rsl_rl/play.py"
+      },
+      "commands": {
+        "rollout": "./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/play.py --task Isaac-Velocity-Rough-H1-Play-v0 --headless --num_envs 25 --use_pretrained_checkpoint --video --video_length 240",
+        "interactive": "./isaaclab.sh -p scripts/demos/h1_locomotion.py"
+      },
+      "artifacts": [
+        "<resolved-checkpoint-dir>/videos/play/rl-video-step-0.mp4",
+        "<resolved-checkpoint-dir>/exported/policy.pt",
+        "<resolved-checkpoint-dir>/exported/policy.onnx"
+      ],
+      "evidence": [
+        {
+          "name": "Source",
+          "status": "source_verified",
+          "detail": "Demo script, task registration, and RSL-RL runner config are present in this branch."
+        },
+        {
+          "name": "Smoke test",
+          "status": "runtime_pending",
+          "detail": "Expected to resolve the published checkpoint and run to video_length."
+        },
+        {
+          "name": "Rollout",
+          "status": "runtime_pending",
+          "detail": "Expected to record policy playback from the published checkpoint."
+        },
+        {
+          "name": "Recording",
+          "status": "runtime_pending",
+          "detail": "Playback MP4 should be emitted next to the resolved checkpoint."
+        },
+        {
+          "name": "Preview",
+          "status": "available",
+          "detail": "Static preview image is included in docs/source/_static."
+        },
+        {
+          "name": "Checkpoint",
+          "status": "published_checkpoint",
+          "detail": "Resolved by get_published_pretrained_checkpoint(\"rsl_rl\", \"Isaac-Velocity-Rough-H1-v0\")."
+        }
+      ]
+    }
+  ]
+}

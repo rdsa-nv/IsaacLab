@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Isaac Lab Living Examples</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="hero">
+      <img class="hero__image" src="../source/_static/tasks.jpg" alt="Examples created with Isaac Lab">
+      <div class="hero__overlay"></div>
+      <div class="hero__content">
+        <p class="eyebrow">Isaac Lab 3.0 living examples</p>
+        <h1>Example evidence, not example prose.</h1>
+        <p class="hero__lede">
+          A lightweight dashboard for examples that have source, tests, rollouts,
+          recordings, previews, and checkpoint status attached.
+        </p>
+        <div class="summary" id="summary" aria-label="Example summary"></div>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="toolbar" aria-label="Dashboard controls">
+        <div>
+          <p class="eyebrow">Dossiers</p>
+          <h2>Living example cards</h2>
+          <p class="probe" id="runtimeProbe"></p>
+        </div>
+        <div class="filters" id="filters" role="tablist" aria-label="Example filters"></div>
+      </section>
+
+      <section class="examples" id="examples" aria-live="polite"></section>
+
+      <section class="manifest-note">
+        <div>
+          <p class="eyebrow">Manifest</p>
+          <h2>Static, portable, generated later</h2>
+        </div>
+        <p>
+          This page reads <code>manifest.json</code> at runtime. The next step is
+          for CI or a local runner to update the manifest only after artifacts
+          exist on disk.
+        </p>
+      </section>
+    </main>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
