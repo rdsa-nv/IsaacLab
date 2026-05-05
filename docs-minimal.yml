@@ -1,0 +1,114 @@
+site_name: Isaac Lab
+site_description: Example-driven documentation for Isaac Lab — train, evaluate, and deploy robot learning policies.
+site_url: https://isaac-sim.github.io/IsaacLab/
+docs_dir: docs-minimal
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: green
+      accent: lime
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: green
+      accent: lime
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - search.suggest
+    - search.highlight
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+repo_url: https://github.com/isaac-sim/IsaacLab
+repo_name: isaac-sim/IsaacLab
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - minify:
+      minify_html: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/isaac-sim/IsaacLab
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Install: getting-started/install.md
+    - Train Your First Policy: getting-started/first-training.md
+  - Environments:
+    - Gallery: environments/index.md
+    - Locomotion:
+      - ANYmal-C (Quadruped): environments/locomotion/anymal-c.md
+      - Unitree Go2: environments/locomotion/go2.md
+      - Unitree H1 (Humanoid): environments/locomotion/h1.md
+      - Spot: environments/locomotion/spot.md
+      - Cassie: environments/locomotion/cassie.md
+      - Unitree G1: environments/locomotion/g1.md
+      - ANYmal-D: environments/locomotion/anymal-d.md
+    - Manipulation:
+      - Franka Lift: environments/manipulation/franka-lift.md
+      - Franka Cabinet: environments/manipulation/franka-cabinet.md
+      - Franka Reach: environments/manipulation/franka-reach.md
+      - Franka Stack: environments/manipulation/franka-stack.md
+    - Dexterous:
+      - Allegro Hand: environments/dexterous/allegro.md
+      - Shadow Hand: environments/dexterous/shadow-hand.md
+    - Classic Control:
+      - Cartpole: environments/classic/cartpole.md
+      - Ant: environments/classic/ant.md
+      - Humanoid: environments/classic/humanoid.md
+    - Aerial:
+      - Quadcopter: environments/aerial/quadcopter.md
+    - Industrial:
+      - Factory: environments/industrial/factory.md
+  - Training:
+    - RSL-RL: training/rsl-rl.md
+    - SKRL: training/skrl.md
+    - Stable-Baselines3: training/sb3.md
+    - RL Games: training/rl-games.md
+    - Multi-GPU: training/multi-gpu.md
+  - Concepts:
+    - Environment Types: concepts/environments.md
+    - Configuration System: concepts/configuration.md
+    - Sim-to-Real: concepts/sim-to-real.md
