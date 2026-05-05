@@ -41,7 +41,7 @@ Isaac Lab is an open-source framework for training robot policies in simulation 
 
     Export to ONNX/JIT, deploy on real hardware.
 
-    [:octicons-arrow-right-24: Deployment](concepts/sim-to-real.md)
+    [:octicons-arrow-right-24: Deployment](deployment/sim-to-real.md)
 
 </div>
 

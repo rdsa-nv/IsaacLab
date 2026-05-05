@@ -76,6 +76,15 @@ nav:
   - Getting Started:
     - Install: getting-started/install.md
     - Train Your First Policy: getting-started/first-training.md
+    - Create Your Own Project: getting-started/project-template.md
+  - Tutorials:
+    - Overview: tutorials/index.md
+    - Simulation Basics: tutorials/simulation-basics.md
+    - Working with Assets: tutorials/assets.md
+    - Interactive Scenes: tutorials/scenes.md
+    - Building Environments: tutorials/environments.md
+    - Using Sensors: tutorials/sensors.md
+    - Motion Controllers: tutorials/controllers.md
   - Environments:
     - Gallery: environments/index.md
     - Locomotion:
@@ -108,7 +117,38 @@ nav:
     - Stable-Baselines3: training/sb3.md
     - RL Games: training/rl-games.md
     - Multi-GPU: training/multi-gpu.md
-  - Concepts:
-    - Environment Types: concepts/environments.md
-    - Configuration System: concepts/configuration.md
-    - Sim-to-Real: concepts/sim-to-real.md
+    - Ray & Hyperparameter Tuning: training/ray.md
+    - Population-Based Training: training/pbt.md
+    - Reproducibility: training/reproducibility.md
+  - How-To Guides:
+    - Overview: how-to/index.md
+    - Import New Assets: how-to/import-assets.md
+    - Camera & Rendering: how-to/camera-rendering.md
+    - Domain Randomization: how-to/domain-randomization.md
+    - Curriculum Learning: how-to/curriculum-learning.md
+    - Teleoperation: how-to/teleoperation.md
+    - Performance Optimization: how-to/performance.md
+    - Record Videos & Animations: how-to/record-videos.md
+  - Architecture:
+    - Environment Types: architecture/environments.md
+    - Configuration System: architecture/configuration.md
+    - Physics Backends: architecture/physics-backends.md
+    - Actuators: architecture/actuators.md
+    - Terrains: architecture/terrains.md
+    - Sensors: architecture/sensors.md
+  - Deployment:
+    - Sim-to-Real: deployment/sim-to-real.md
+    - Policy Export: deployment/policy-export.md
+    - Docker: deployment/docker.md
+    - HPC Clusters: deployment/hpc.md
+    - Cloud: deployment/cloud.md
+  - Migration:
+    - Overview: migration/index.md
+    - From IsaacGymEnvs: migration/from-isaacgymenvs.md
+    - From Orbit: migration/from-orbit.md
+    - Isaac Lab 3.0: migration/isaac-lab-3.md
+  - Developer Guide:
+    - Development Setup: developer/setup.md
+    - Repository Structure: developer/repo-structure.md
+    - Contributing: developer/contributing.md
+    - Troubleshooting: developer/troubleshooting.md

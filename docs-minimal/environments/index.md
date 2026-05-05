@@ -81,4 +81,4 @@ Each task has two implementations:
 - **Direct** (`-Direct-`): Single Python class, full control, fastest iteration
 - **Manager-Based** (no `-Direct-`): Modular MDP components, easier to customize rewards/observations
 
-See [Environment Types](../concepts/environments.md) for details.
+See [Environment Types](../architecture/environments.md) for details.
