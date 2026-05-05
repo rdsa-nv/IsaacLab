@@ -2,7 +2,7 @@
 
 **Hover and waypoint tracking with a generic quadcopter.**
 
-<!-- VIDEO PLACEHOLDER -->
+![Quadcopter hovering](../../_static/tasks/others/quadcopter.jpg)
 
 ## Quick start
 

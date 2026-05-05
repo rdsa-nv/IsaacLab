@@ -2,6 +2,8 @@
 
 **Attach cameras, ray casters, and contact sensors to robots. Read sensor data at configurable frequencies.**
 
+![Sensors attached to a robot](../_static/tutorials/tutorial_add_sensors.jpg)
+
 ## Camera
 
 Captures RGB, depth, normals, and segmentation images.
@@ -93,18 +95,34 @@ force_matrix = scene["contact"].data.force_matrix_w  # [N, num_bodies, max_conta
 
 ## IMU
 
-Measures linear acceleration and angular velocity in the body frame.
+Measures linear acceleration and angular velocity in the body frame. Automatically includes gravity in accelerometer readings.
+
+!!! info "3.0 Change: IMU vs PVA"
+    In Isaac Lab 3.0, the sensor that provides full state (pose, velocity, acceleration) is now called **PVA** (`PvaCfg`). The **IMU** sensor (`ImuCfg`) is a lightweight sensor that only provides gyroscope (angular velocity) and accelerometer (linear acceleration) data — matching real IMU hardware.
 
 ```python
-from isaaclab.sensors import ImuSensorCfg
+# Lightweight IMU (gyro + accelerometer) — new default in 3.0
+from isaaclab.sensors import ImuCfg
 
-imu = ImuSensorCfg(
+imu = ImuCfg(
     prim_path="{ENV_REGEX_NS}/Robot/base",
     update_period=0.0,
 )
 ```
 
-**Data:** `lin_acc_b` [m/s^2], `ang_vel_b` [rad/s], `lin_vel_b` [m/s]
+**IMU data:** `lin_acc_b` [m/s^2], `ang_vel_b` [rad/s]
+
+```python
+# Full state sensor (pose, velocity, acceleration) — renamed from Imu in 3.0
+from isaaclab.sensors import PvaCfg
+
+pva = PvaCfg(
+    prim_path="{ENV_REGEX_NS}/Robot/base",
+    update_period=0.0,
+)
+```
+
+**PVA data:** `lin_acc_b` [m/s^2], `ang_vel_b` [rad/s], `lin_vel_b` [m/s], position, orientation
 
 ## Frame transformer
 
@@ -145,7 +163,8 @@ class MySceneCfg(InteractiveSceneCfg):
 | Camera | RGB, depth, segmentation | Vision-based RL | Yes |
 | Ray caster | Hit positions | Terrain scanning | No (virtual) |
 | Contact | Force vectors | Gait detection | Yes (rigid body) |
-| IMU | Acceleration, angular vel | State estimation | Yes (rigid body) |
+| IMU | Gyro, accelerometer | Real IMU emulation | Yes (rigid body) |
+| PVA | Full pose, velocity, accel | State estimation | Yes (rigid body) |
 | Frame transformer | Relative poses | IK, manipulation | Yes (rigid body) |
 
 ## Script reference

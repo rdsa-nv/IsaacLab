@@ -2,6 +2,8 @@
 
 **Create rigid bodies, articulated robots, and deformable objects. Manage their state and apply forces.**
 
+![Running an articulation](../_static/tutorials/tutorial_run_articulation.jpg)
+
 ## Rigid objects
 
 Rigid objects have a root state (pose + velocity) and respond to physics forces.

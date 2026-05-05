@@ -2,7 +2,7 @@
 
 **Velocity tracking with the Boston Dynamics Spot quadruped.**
 
-<!-- VIDEO PLACEHOLDER -->
+![Spot on flat terrain](../../_static/tasks/locomotion/spot_flat.jpg)
 
 ## Quick start
 

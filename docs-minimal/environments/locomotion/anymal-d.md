@@ -2,7 +2,9 @@
 
 **Velocity tracking with the ANYbotics ANYmal-D quadruped.**
 
-<!-- VIDEO PLACEHOLDER -->
+![ANYmal-D on flat terrain](../../_static/tasks/locomotion/anymal_d_flat.jpg)
+
+![ANYmal-D on rough terrain](../../_static/tasks/locomotion/anymal_d_rough.jpg)
 
 ## Quick start
 

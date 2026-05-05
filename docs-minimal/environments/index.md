@@ -2,6 +2,13 @@
 
 Every environment below is ready to train. Click through for the training command, configuration, and video.
 
+| | | |
+|:-:|:-:|:-:|
+| ![Quadrupeds](../_static/demos/quadrupeds.jpg) | ![Bipeds](../_static/demos/bipeds.jpg) | ![Arms](../_static/demos/arms.jpg) |
+| Quadrupeds | Bipeds & Humanoids | Manipulation |
+| ![Hands](../_static/demos/hands.jpg) | ![Quadcopter](../_static/demos/quadcopter.jpg) | ![Deformables](../_static/demos/deformables.jpg) |
+| Dexterous Hands | Aerial | Deformable Objects |
+
 ## Locomotion
 
 Velocity tracking on flat and rough terrain.

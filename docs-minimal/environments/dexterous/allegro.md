@@ -2,8 +2,7 @@
 
 **In-hand cube reorientation with the Wonik Allegro Hand.**
 
-<!-- VIDEO PLACEHOLDER -->
-<!-- ![Allegro repose](../../assets/videos/allegro-repose.mp4) -->
+![Allegro Hand cube manipulation](../../_static/tasks/manipulation/allegro_cube.jpg)
 
 ## Quick start
 

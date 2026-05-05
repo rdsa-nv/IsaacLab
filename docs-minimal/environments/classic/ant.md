@@ -2,7 +2,7 @@
 
 **MuJoCo-style ant locomotion — maximize forward velocity while staying upright.**
 
-<!-- VIDEO PLACEHOLDER -->
+![Ant locomotion](../../_static/tasks/classic/ant.jpg)
 
 ## Quick start
 

@@ -2,6 +2,9 @@
 
 Isaac Lab uses Python dataclasses (via `@configclass`) for all configuration. No YAML files, no JSON — just Python with autocomplete and type checking.
 
+!!! info "3.0: Multi-backend PresetCfg"
+    Isaac Lab 3.0 adds `PresetCfg` for writing environments that support both PhysX and Newton backends. See [Physics Backends](physics-backends.md).
+
 ## The @configclass decorator
 
 ```python

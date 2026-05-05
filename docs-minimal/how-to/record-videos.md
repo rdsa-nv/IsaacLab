@@ -72,6 +72,6 @@ viewport_cam = CameraCfg(
 
 - **Use `--num_envs 1`** for clean videos (multiple envs clutter the frame).
 - **Enable `--enable_cameras`** when recording — cameras are off by default for performance.
-- **Headless recording** works: `--headless --video` renders offscreen.
+- **Headless recording** works: `--viz none --video` renders offscreen.
 - **Video format**: Output is MP4 with H.264 encoding. Adjust `video_length` (in steps) to control duration.
 - **For papers**: Use a fixed camera angle and consistent lighting. Record multiple seeds for representative results.

@@ -2,6 +2,8 @@
 
 **Manage multiple entities (robots, objects, sensors) in a single scene with automatic environment cloning.**
 
+![Creating a scene with multiple environments](../_static/tutorials/tutorial_creating_a_scene.jpg)
+
 ## Define a scene with config
 
 ```python

@@ -2,8 +2,7 @@
 
 **Pick up a cube and move it to a target position using the Franka Emika Panda arm.**
 
-<!-- VIDEO PLACEHOLDER -->
-<!-- ![Franka lifting cube](../../assets/videos/franka-lift.mp4) -->
+![Franka lifting a cube](../../_static/tasks/manipulation/franka_lift.jpg)
 
 ## Quick start
 

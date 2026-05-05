@@ -2,7 +2,9 @@
 
 **High-precision industrial assembly tasks: peg insertion, gear meshing, and nut threading.**
 
-<!-- VIDEO PLACEHOLDER -->
+![Factory peg insertion](../../_static/tasks/factory/peg_insert.jpg)
+
+![Factory gear meshing](../../_static/tasks/factory/gear_mesh.jpg)
 
 ## Quick start
 

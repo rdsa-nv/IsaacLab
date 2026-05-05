@@ -2,8 +2,9 @@
 
 **Velocity tracking on flat and rough terrain with the ANYbotics ANYmal-C quadruped robot.**
 
-<!-- VIDEO PLACEHOLDER -->
-<!-- ![ANYmal-C rough terrain](../../assets/videos/anymal-c-rough.mp4) -->
+![ANYmal-C on flat terrain](../../_static/tasks/locomotion/anymal_c_flat.jpg)
+
+![ANYmal-C on rough terrain](../../_static/tasks/locomotion/anymal_c_rough.jpg)
 
 !!! info "Checkpoint available"
     Pre-trained checkpoints can be loaded with `--use_pretrained_checkpoint` flag.

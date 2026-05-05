@@ -2,6 +2,8 @@
 
 **Isaac Lab provides implicit and explicit actuator models that convert action commands into joint torques.**
 
+![Actuator model architecture](../_static/actuator-group/actuator-light.svg)
+
 ## Implicit vs explicit
 
 | Type | How it works | When to use |

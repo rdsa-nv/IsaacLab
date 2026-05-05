@@ -2,6 +2,8 @@
 
 **Train in simulation, deploy on real hardware.**
 
+![Sim-to-real gear assembly](../_static/policy_deployment/02_gear_assembly/sim_real_gear_assembly_train.jpg)
+
 ## Export trained policies
 
 After running `play.py`, policies are automatically exported to:

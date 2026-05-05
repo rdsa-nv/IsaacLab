@@ -2,6 +2,8 @@
 
 **Use inverse kinematics and operational space control to track end-effector poses.**
 
+![Task-space controller tracking end-effector pose](../_static/tutorials/tutorial_task_space_controller.jpg)
+
 ## Differential IK
 
 Compute joint position targets from desired end-effector poses using the Jacobian.
@@ -20,10 +22,10 @@ diff_ik = DifferentialIKController(diff_ik_cfg, num_envs=num_envs, device=device
 **Set target and compute:**
 
 ```python
-# Target EE pose in robot base frame [x, y, z, qw, qx, qy, qz]
+# Target EE pose in robot base frame [x, y, z, qx, qy, qz, qw]
 ik_command = torch.zeros(num_envs, 7, device=device)
 ik_command[:, :3] = torch.tensor([0.5, 0.0, 0.3])    # Position [m]
-ik_command[:, 3:] = torch.tensor([1.0, 0.0, 0.0, 0.0])  # Quaternion
+ik_command[:, 3:] = torch.tensor([0.0, 0.0, 0.0, 1.0])  # Quaternion (XYZW in 3.0)
 
 diff_ik.set_command(ik_command)
 

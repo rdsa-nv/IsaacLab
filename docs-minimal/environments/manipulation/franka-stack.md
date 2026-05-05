@@ -2,7 +2,7 @@
 
 **Stack colored cubes in the correct order using the Franka arm.**
 
-<!-- VIDEO PLACEHOLDER -->
+![Franka stacking cubes](../../_static/tasks/manipulation/franka_stack.jpg)
 
 ## Quick start
 

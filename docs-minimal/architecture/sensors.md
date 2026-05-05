@@ -4,6 +4,9 @@
 
 ## Sensor lifecycle
 
+!!! warning "3.0 Change: IMU → PVA"
+    In Isaac Lab 3.0, the old `Imu` sensor (full state) was renamed to `Pva`. The new `Imu` sensor only provides gyroscope and accelerometer data. See [Migration Guide](../migration/isaac-lab-3.md).
+
 All sensors follow the same lifecycle:
 
 1. **Spawn**: Created during scene setup (or virtual, like ray casters)

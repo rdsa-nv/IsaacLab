@@ -88,7 +88,7 @@ gym.register(
 ## Train
 
 ```bash
-./isaaclab.sh -p scripts/train.py --task Isaac-MyTask-v0 --num_envs 4096 --headless
+./isaaclab.sh -p scripts/train.py --task Isaac-MyTask-v0 --num_envs 4096 --viz none
 ```
 
 ## Evaluate

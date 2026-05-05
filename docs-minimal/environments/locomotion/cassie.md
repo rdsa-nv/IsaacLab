@@ -2,7 +2,7 @@
 
 **Bipedal locomotion with the Agility Robotics Cassie biped.**
 
-<!-- VIDEO PLACEHOLDER -->
+![Agility Cassie](../../_static/demos/bipeds.jpg)
 
 ## Quick start
 

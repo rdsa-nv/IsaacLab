@@ -2,6 +2,8 @@
 
 **Launch Isaac Sim, spawn objects into the scene, and step the physics simulation.**
 
+![Spawning primitives in Isaac Lab](../_static/tutorials/tutorial_spawn_prims.jpg)
+
 ## 1. Create an empty simulation
 
 ```python
@@ -34,7 +36,7 @@ simulation_app.close()
 
 **Key classes:**
 
-- `AppLauncher` — wraps `SimulationApp`, handles CLI args (`--headless`, `--livestream`, etc.)
+- `AppLauncher` — wraps `SimulationApp`, handles CLI args (`--viz`, `--enable_cameras`, etc.)
 - `SimulationContext` — manages physics scene, timeline, and stepping
 - `sim.reset()` must be called before `sim.step()` (initializes physics handles)
 

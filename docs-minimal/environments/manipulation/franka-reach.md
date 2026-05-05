@@ -2,7 +2,7 @@
 
 **Move the Franka end-effector to a randomly sampled target pose.**
 
-<!-- VIDEO PLACEHOLDER -->
+![Franka reaching target](../../_static/tasks/manipulation/franka_reach.jpg)
 
 ## Quick start
 

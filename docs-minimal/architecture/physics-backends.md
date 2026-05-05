@@ -1,14 +1,30 @@
 # Physics Backends
 
-**Isaac Lab supports multiple physics engines. Choose the right one for your task.**
+**Isaac Lab 3.0 introduces a multi-backend architecture. Write your environment once, run it on any physics engine.**
+
+![Isaac Lab reference architecture](../_static/reference-architecture/isaac-lab-ra-light.svg)
 
 ## Available backends
 
-| Backend | Engine | GPU | Soft body | Best for |
-|---------|--------|-----|-----------|----------|
-| PhysX (GPU) | NVIDIA PhysX 5 | Yes | Yes | Default — most features, well tested |
-| Newton | MuJoCo-Warp | Yes | Limited | Speed — locomotion, simple manipulation |
-| PhysX (CPU) | NVIDIA PhysX 5 | No | Yes | Debugging, small-scale testing |
+| Backend | Package | Engine | GPU | Soft body | Best for |
+|---------|---------|--------|-----|-----------|----------|
+| PhysX (GPU) | `isaaclab_physx` | NVIDIA PhysX 5 | Yes | Yes | Default — most features, well tested |
+| Newton | `isaaclab_newton` | MuJoCo-Warp | Yes | No | Speed — locomotion, kit-less install |
+| PhysX (CPU) | `isaaclab_physx` | NVIDIA PhysX 5 | No | Yes | Debugging, small-scale testing |
+
+## Factory-based dispatch (new in 3.0)
+
+Your code uses the core `isaaclab` API. A factory automatically routes to the correct backend implementation:
+
+```python
+from isaaclab.assets import Articulation, ArticulationCfg
+
+# Same code works for both backends — no import changes needed
+robot = Articulation(cfg)
+# Factory dispatches to isaaclab_physx.Articulation or isaaclab_newton.Articulation
+```
+
+The factory follows a convention: `isaaclab.X.Y` maps to `isaaclab_{backend}.X.Y`.
 
 ## Selecting a backend
 

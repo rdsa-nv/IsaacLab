@@ -4,6 +4,8 @@ Isaac Lab has two ways to define RL environments. Both produce Gymnasium-compati
 
 ## Direct environments
 
+![Direct workflow](../_static/task-workflows/direct-based-light.svg)
+
 A single Python class that owns the full MDP loop. Best for custom tasks where you want full control.
 
 ```python
@@ -50,6 +52,8 @@ class CartpoleEnv(DirectRLEnv):
 - You're porting from IsaacGym or another framework
 
 ## Manager-based environments
+
+![Manager-based workflow](../_static/task-workflows/manager-based-light.svg)
 
 Modular environments where observations, actions, rewards, terminations, and events are separate components managed by "managers."
 

@@ -2,8 +2,7 @@
 
 **Open a cabinet drawer using the Franka Emika Panda arm.**
 
-<!-- VIDEO PLACEHOLDER -->
-<!-- ![Franka opening drawer](../../assets/videos/franka-cabinet.mp4) -->
+![Franka opening cabinet drawer](../../_static/tasks/manipulation/franka_open_drawer.jpg)
 
 ## Quick start
 

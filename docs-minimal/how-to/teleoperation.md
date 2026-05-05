@@ -2,6 +2,8 @@
 
 **Control robots interactively using keyboards, gamepads, spacemouse, or VR devices.**
 
+![Teleoperation with Franka](../_static/demos/haply_teleop_franka.jpg)
+
 ## Overview
 
 Isaac Lab provides a device abstraction layer for teleoperation. Any input device maps to either SE(3) pose commands (for manipulation) or velocity commands (for locomotion).

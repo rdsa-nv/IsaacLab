@@ -2,8 +2,9 @@
 
 **Velocity tracking with the Unitree Go2 quadruped robot.**
 
-<!-- VIDEO PLACEHOLDER -->
-<!-- ![Unitree Go2](../../assets/videos/go2-flat.mp4) -->
+![Unitree Go2 on flat terrain](../../_static/tasks/locomotion/go2_flat.jpg)
+
+![Unitree Go2 on rough terrain](../../_static/tasks/locomotion/go2_rough.jpg)
 
 ## Quick start
 

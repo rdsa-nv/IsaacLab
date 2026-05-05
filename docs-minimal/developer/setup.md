@@ -5,21 +5,21 @@
 ## Clone and install (editable)
 
 ```bash
-git clone https://github.com/isaac-sim/IsaacLab.git
+git clone -b v3.0.0-beta https://github.com/isaac-sim/IsaacLab.git
 cd IsaacLab
 
-# Create conda environment
-conda create -n isaaclab python=3.10 -y
+# Create conda environment — Python 3.12 required for 3.0
+conda create -n isaaclab python=3.12 -y
 conda activate isaaclab
 
-# Install Isaac Sim
+# Install Isaac Sim 6.0
 pip install isaacsim[all]
 
 # Install Isaac Lab in editable mode
 ./isaaclab.sh -i
 
-# Install RL framework extensions
-./isaaclab.sh -e rsl_rl
+# Install RL framework
+pip install -e "source/isaaclab_rl[rsl-rl]"
 ```
 
 ## Pre-commit hooks
@@ -79,28 +79,27 @@ Settings for Isaac Lab:
 ```
 IsaacLab/
   source/
-    isaaclab/              # Core library
+    isaaclab/              # Core library (backend-agnostic API)
       isaaclab/
-        assets/            # Articulation, RigidObject, DeformableObject
+        assets/            # Articulation, RigidObject
         envs/              # ManagerBasedRLEnv, DirectRLEnv
-        managers/          # Observation, Action, Reward, Termination managers
-        sensors/           # Camera, Contact, IMU, RayCaster
+        managers/          # Observation, Action, Reward, Event managers
+        sensors/           # Camera, Contact, IMU, PVA, RayCaster
         sim/               # SimulationContext, spawners
         terrains/          # Terrain generators
         controllers/       # IK, OSC controllers
         utils/             # Math, config, IO utilities
+    isaaclab_physx/        # PhysX backend implementation (new in 3.0)
+    isaaclab_newton/       # Newton backend implementation (new in 3.0)
     isaaclab_tasks/        # Pre-built environments
-      isaaclab_tasks/
-        locomotion/        # Anymal, Go2, H1, etc.
-        manipulation/      # Franka, UR10, etc.
-        dexterous/         # Allegro, Shadow Hand
-        classic/           # Cartpole, Ant, Humanoid
+    isaaclab_rl/           # RL framework wrappers
+    isaaclab_assets/       # Robot USD/URDF assets
   scripts/
     reinforcement_learning/  # Training/play scripts per framework
     tutorials/               # Tutorial scripts
-    tools/                   # Asset converters, utilities
+    tools/                   # Asset converters, quaternion migration tool
     environments/            # random_agent.py, etc.
-  docs/                      # Sphinx documentation source
+  docs/                      # Documentation source
 ```
 
 ## Useful commands

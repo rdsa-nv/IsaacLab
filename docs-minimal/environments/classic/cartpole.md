@@ -2,8 +2,7 @@
 
 **Balance a pole on a cart. The "hello world" of RL in Isaac Lab.**
 
-<!-- VIDEO PLACEHOLDER -->
-<!-- ![Cartpole balancing](../../assets/videos/cartpole.mp4) -->
+![Cartpole balancing](../../_static/tasks/classic/cartpole.jpg)
 
 ## Quick start
 

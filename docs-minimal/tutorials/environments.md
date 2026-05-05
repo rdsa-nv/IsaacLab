@@ -2,6 +2,8 @@
 
 **Create RL environments using either the manager-based or direct workflow, then register them with Gymnasium.**
 
+![Manager-based environment](../_static/tutorials/tutorial_create_manager_rl_env.jpg)
+
 ## Manager-based environments
 
 Decompose the MDP into modular managers for observations, actions, rewards, terminations, and events.

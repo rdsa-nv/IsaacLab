@@ -2,6 +2,8 @@
 
 **Generate procedural terrains for locomotion training with automatic curriculum support.**
 
+![Procedural terrain generation](../_static/demos/procedural_terrain.jpg)
+
 ## Overview
 
 Isaac Lab's terrain system generates heightfield or trimesh terrains arranged in a grid. Rows represent difficulty levels; columns represent random variations at each level. Combined with curriculum learning, robots automatically progress to harder terrain as they improve.
@@ -50,6 +52,14 @@ terrain_generator = TerrainGeneratorCfg(
 ## Available terrain types
 
 ### Height-field based
+
+| Terrain | Preview |
+|---------|---------|
+| Random uniform | ![](../_static/terrains/height_field/random_uniform_terrain.jpg) |
+| Wave | ![](../_static/terrains/height_field/wave_terrain.jpg) |
+| Stepping stones | ![](../_static/terrains/height_field/stepping_stones_terrain.jpg) |
+| Pyramid stairs | ![](../_static/terrains/height_field/pyramid_stairs_terrain.jpg) |
+| Discrete obstacles | ![](../_static/terrains/height_field/discrete_obstacles_terrain.jpg) |
 
 | Type | Description | Key params |
 |------|-------------|------------|

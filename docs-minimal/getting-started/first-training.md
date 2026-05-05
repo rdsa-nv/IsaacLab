@@ -2,6 +2,8 @@
 
 **Goal**: Train a cartpole to balance, then watch it. Takes 5 minutes.
 
+![Cartpole environment](../_static/tasks/classic/cartpole.jpg)
+
 ## 1. Train
 
 ```bash
@@ -13,9 +15,6 @@
 
 This trains PPO across 4096 parallel cartpoles. Logs go to `logs/rsl_rl/cartpole_direct/`.
 
-<!-- VIDEO PLACEHOLDER: cartpole training visualization -->
-<!-- ![Cartpole training](../assets/videos/cartpole-training.mp4) -->
-
 ## 2. Evaluate
 
 ```bash
@@ -25,6 +24,16 @@ This trains PPO across 4096 parallel cartpoles. Logs go to `logs/rsl_rl/cartpole
 ```
 
 The script automatically loads the latest checkpoint and runs the policy.
+
+!!! tip "Visualizer selection (new in 3.0)"
+    Use `--viz` to choose your visualizer:
+    ```bash
+    --viz kit          # Omniverse (default with Isaac Sim)
+    --viz newton       # Newton visualizer (lightweight)
+    --viz rerun        # Rerun viewer (remote/replay)
+    --viz none         # No visualization (headless)
+    ```
+    The old `--headless` flag still works but is deprecated.
 
 ## 3. Record a video
 

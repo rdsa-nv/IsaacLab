@@ -2,6 +2,8 @@
 
 **Bring URDF, MJCF, or USD robot/object models into Isaac Lab.**
 
+![URDF to USD conversion](../_static/tutorials/tutorial_convert_urdf.jpg)
+
 ## Supported formats
 
 | Format | Source | Converter |

@@ -9,7 +9,7 @@
 | Increase `num_envs` | 2-10x | Trivial |
 | Use `@torch.jit.script` for rewards | 1.2-2x | Low |
 | Reduce `decimation` | 1.5-3x | Low |
-| Disable rendering (`--headless`) | 1.3-2x | Trivial |
+| Disable rendering (`--viz none`) | 1.3-2x | Trivial |
 | Use instanceable assets | Memory savings | Low |
 | Tiled camera rendering | 5-20x for vision | Medium |
 
@@ -65,13 +65,16 @@ class MyEnvCfg(DirectRLEnvCfg):
 
 Reduce decimation if your task doesn't need high-frequency control.
 
-## Headless mode
+## Disable visualization
 
 Disable rendering entirely for pure training:
 
 ```bash
-./isaaclab.sh -p train.py --task MyTask --headless
+./isaaclab.sh -p train.py --task MyTask --viz none
 ```
+
+!!! note
+    The old `--headless` flag still works but `--viz none` is preferred in 3.0.
 
 ## Physics backend selection
 
@@ -104,7 +107,7 @@ with timer_utils.Timer("my_operation"):
 For deep GPU profiling:
 
 ```bash
-nsys profile -o report ./isaaclab.sh -p train.py --task MyTask --num_envs 1024 --headless
+nsys profile -o report ./isaaclab.sh -p train.py --task MyTask --num_envs 1024 --viz none
 ```
 
 ## Common bottlenecks

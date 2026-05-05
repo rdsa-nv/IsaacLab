@@ -1,66 +1,114 @@
 # Install
 
-## Prerequisites
+## System requirements
 
-- **NVIDIA GPU**: RTX 3070+ or data center GPU (A100, L40, H100)
-- **NVIDIA Driver**: 535.129.03+
-- **Isaac Sim**: 4.5.0+ (installed via Omniverse Launcher)
-- **Python**: 3.10
-- **OS**: Ubuntu 22.04 or Windows 10/11
+| Requirement | Minimum |
+|------------|---------|
+| **OS** | Ubuntu 22.04 / 24.04 (x64) or Windows 11 |
+| **GPU** | NVIDIA RTX 3070+ or data center (A100, L40, H100) |
+| **GPU VRAM** | 16 GB+ |
+| **RAM** | 32 GB+ |
+| **Python** | 3.12 |
+| **NVIDIA Driver** | 560+ |
 
-## Quick install
+## Full install (Isaac Sim + PhysX + Newton)
 
 ```bash
-# Clone the repo
-git clone https://github.com/isaac-sim/IsaacLab.git
+# Clone Isaac Lab 3.0
+git clone -b v3.0.0-beta https://github.com/isaac-sim/IsaacLab.git
 cd IsaacLab
 
-# Create conda env (recommended)
-conda create -n isaaclab python=3.10 -y
+# Create conda env with Python 3.12
+conda create -n isaaclab python=3.12 -y
 conda activate isaaclab
 
-# Install Isaac Lab + your preferred RL framework
-./isaaclab.sh -i        # core install
-pip install -e source/isaaclab_rl[rsl-rl]   # RSL-RL (recommended)
+# Install Isaac Sim 6.0
+pip install isaacsim[all]
+
+# Install Isaac Lab
+./isaaclab.sh -i
+
+# Install RL framework
+pip install -e "source/isaaclab_rl[rsl-rl]"
 ```
 
-## Install with other RL frameworks
+## Kit-less install (Newton only — no Isaac Sim)
+
+New in 3.0: run Isaac Lab **without** Isaac Sim for Newton-based workflows:
+
+```bash
+git clone -b v3.0.0-beta https://github.com/isaac-sim/IsaacLab.git
+cd IsaacLab
+
+conda create -n isaaclab python=3.12 -y
+conda activate isaaclab
+
+# Install Isaac Lab (no Isaac Sim needed)
+./isaaclab.sh -i
+
+# Install Newton backend
+pip install -e "source/isaaclab[newton]"
+
+# Install RL framework
+pip install -e "source/isaaclab_rl[rsl-rl]"
+```
+
+**What works without Isaac Sim:**
+
+| Feature | Kit-less (Newton) | Full (Isaac Sim) |
+|---------|:-:|:-:|
+| Newton physics | Yes | Yes |
+| PhysX physics | No | Yes |
+| RL training | Yes | Yes |
+| RTX rendering | No | Yes |
+| Camera sensors | No | Yes |
+| Deformable objects | No | Yes |
+| URDF/MJCF import | No | Yes |
+| Newton visualizer | Yes | Yes |
+| Kit visualizer | No | Yes |
+
+## Install RL frameworks
 
 === "RSL-RL (recommended)"
 
     ```bash
-    pip install -e source/isaaclab_rl[rsl-rl]
+    pip install -e "source/isaaclab_rl[rsl-rl]"
     ```
 
 === "SKRL"
 
     ```bash
-    pip install -e source/isaaclab_rl[skrl]
+    pip install -e "source/isaaclab_rl[skrl]"
     ```
 
 === "Stable-Baselines3"
 
     ```bash
-    pip install -e source/isaaclab_rl[sb3]
+    pip install -e "source/isaaclab_rl[sb3]"
     ```
 
 === "RL Games"
 
     ```bash
-    pip install -e source/isaaclab_rl[rl-games]
+    pip install -e "source/isaaclab_rl[rl-games]"
     ```
 
 ## Verify installation
 
 ```bash
-# Should open a window with a cartpole balancing
+# With Isaac Sim — opens a window with cartpole training
 ./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py \
   --task Isaac-Cartpole-Direct-v0 --num_envs 64 --max_iterations 10
+
+# Kit-less (Newton only) — use Newton visualizer
+./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py \
+  --task Isaac-Cartpole-Direct-v0 --num_envs 64 --max_iterations 10 \
+  --viz newton
 ```
 
-If you see the cartpole environment running and training logs in the terminal, you're good to go.
+![Verify installation](../_static/setup/verify_install.jpg)
 
-## Docker (alternative)
+## Docker
 
 ```bash
 cd docker
@@ -68,11 +116,22 @@ cd docker
 ./run.sh     # launches container with GPU access
 ```
 
+## Key dependencies (3.0)
+
+| Package | Version | Notes |
+|---------|---------|-------|
+| Python | 3.12 | Required minimum |
+| Isaac Sim | 6.0.0 | Optional for Newton-only |
+| PyTorch | 2.10+ | GPU acceleration |
+| NumPy | 2.0+ | Updated from NumPy 1.x |
+| Warp | 1.12.0 | GPU compute framework |
+
 ## Troubleshooting
 
 | Problem | Fix |
 |---------|-----|
-| `ModuleNotFoundError: isaacsim` | Install Isaac Sim via Omniverse Launcher first |
+| `ModuleNotFoundError: isaacsim` | Install Isaac Sim: `pip install isaacsim[all]` |
 | `CUDA out of memory` | Reduce `--num_envs` (try 512 or 1024) |
-| Black screen on launch | Set `export DISPLAY=:0` or use headless mode (`--headless`) |
-| Slow training | Ensure you're on GPU: check `nvidia-smi` shows utilization |
+| `Python version error` | Isaac Lab 3.0 requires Python 3.12 — check `python --version` |
+| Slow training | Check GPU utilization: `nvidia-smi` |
+| `PhysX out of buffer` | Increase `gpu_found_lost_pairs_capacity` in sim config |

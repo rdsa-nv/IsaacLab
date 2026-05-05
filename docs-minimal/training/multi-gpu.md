@@ -2,6 +2,8 @@
 
 **Scale training across multiple GPUs for faster convergence on complex tasks.**
 
+![Multi-GPU training architecture](../_static/reference-architecture/multi-gpu-training-light.svg)
+
 ## Distributed training with RSL-RL
 
 ```bash

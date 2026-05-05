@@ -2,7 +2,7 @@
 
 **MuJoCo-style humanoid locomotion — walk forward while balancing.**
 
-<!-- VIDEO PLACEHOLDER -->
+![Humanoid locomotion](../../_static/tasks/classic/humanoid.jpg)
 
 ## Quick start
 

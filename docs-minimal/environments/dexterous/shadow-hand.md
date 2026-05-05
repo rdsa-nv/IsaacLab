@@ -2,8 +2,7 @@
 
 **In-hand cube reorientation with the Shadow Dexterous Hand. Multiple observation modes including vision.**
 
-<!-- VIDEO PLACEHOLDER -->
-<!-- ![Shadow hand repose](../../assets/videos/shadow-hand-repose.mp4) -->
+![Shadow Hand cube reorientation](../../_static/tasks/manipulation/shadow_cube.jpg)
 
 ## Quick start
 

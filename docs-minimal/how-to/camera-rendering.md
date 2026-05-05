@@ -2,6 +2,13 @@
 
 **Set up cameras for vision-based RL, capture depth/segmentation, and scale with tiled rendering.**
 
+| | | |
+|:-:|:-:|:-:|
+| ![RGB](../_static/overview/sensors/camera_rgb.jpg) | ![Depth](../_static/overview/sensors/camera_depth.jpg) | ![Normals](../_static/overview/sensors/camera_normals.jpg) |
+| RGB | Depth | Normals |
+| ![Semantic](../_static/overview/sensors/camera_semantic.jpg) | ![Instance](../_static/overview/sensors/camera_instance.jpg) | ![Instance ID](../_static/overview/sensors/camera_instanceID.jpg) |
+| Semantic segmentation | Instance segmentation | Instance ID |
+
 ## Basic camera setup
 
 ```python
