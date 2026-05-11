@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import contextlib
 import ctypes
+import fnmatch
 import logging
 from abc import abstractmethod
 from collections.abc import Callable
@@ -150,6 +151,7 @@ class NewtonManager(PhysicsManager):
     _collision_pipeline = None
     _collision_cfg: NewtonCollisionPipelineCfg | None = None
     _newton_contact_sensors: dict = {}  # Maps sensor_key to NewtonContactSensor
+    _contact_label_match_cache: dict[tuple[str, str | tuple[str, ...]], list[int]] = {}
     _newton_frame_transform_sensors: list = []  # List of SensorFrameTransform
     _newton_imu_sensors: list = []  # List of NewtonSensorIMU
     _pending_extended_state_attributes: set[str] = set()
@@ -465,6 +467,7 @@ class NewtonManager(PhysicsManager):
         NewtonManager._collision_pipeline = None
         NewtonManager._collision_cfg = None
         NewtonManager._newton_contact_sensors = {}
+        NewtonManager._contact_label_match_cache = {}
         NewtonManager._newton_frame_transform_sensors = []
         NewtonManager._newton_imu_sensors = []
         NewtonManager._report_contacts = False
@@ -759,7 +762,8 @@ class NewtonManager(PhysicsManager):
             cls._model.set_gravity(cls._gravity_vector)
             cls._model.num_envs = cls._num_envs
 
-            replace_newton_shape_colors(cls._model)
+            if not cls._clone_physics_only:
+                replace_newton_shape_colors(cls._model)
 
         if cls._pending_extended_contact_attributes:
             cls._model.request_contact_attributes(*cls._pending_extended_contact_attributes)
@@ -1334,6 +1338,22 @@ class NewtonManager(PhysicsManager):
             normalized = [p.rsplit("/", 1)[-1] for p in items]
             return normalized[0] if isinstance(expr, str) else normalized
 
+        def _match_indices(kind: str, expr: str | list[str] | None, labels: list[str]) -> list[int] | None:
+            expr = _normalize_for_labels(_to_fnmatch(expr), labels)
+            if expr is None:
+                return None
+            if isinstance(expr, list) and expr and isinstance(expr[0], int):
+                return expr
+            patterns = (expr,) if isinstance(expr, str) else tuple(expr)
+            if not patterns:
+                return []
+            key = (kind, patterns[0] if len(patterns) == 1 else patterns)
+            indices = cls._contact_label_match_cache.get(key)
+            if indices is None:
+                indices = [idx for idx, label in enumerate(labels) if any(fnmatch.fnmatch(label, p) for p in patterns)]
+                cls._contact_label_match_cache[key] = indices
+            return indices
+
         sensor_key = (
             _hashable_key(body_names_expr),
             _hashable_key(shape_names_expr),
@@ -1341,16 +1361,18 @@ class NewtonManager(PhysicsManager):
             _hashable_key(contact_partners_shape_expr),
         )
 
-        body_labels = list(cls._model.body_label)
-        shape_labels = list(cls._model.shape_label)
+        body_labels = cls._model.body_label if isinstance(cls._model.body_label, list) else list(cls._model.body_label)
+        shape_labels = (
+            cls._model.shape_label if isinstance(cls._model.shape_label, list) else list(cls._model.shape_label)
+        )
 
         with Timer(name="newton_contact_sensor", msg="Contact sensor construction took:"):
             sensor = NewtonContactSensor(
                 cls._model,
-                sensing_obj_bodies=_normalize_for_labels(_to_fnmatch(body_names_expr), body_labels),
-                sensing_obj_shapes=_normalize_for_labels(_to_fnmatch(shape_names_expr), shape_labels),
-                counterpart_bodies=_normalize_for_labels(_to_fnmatch(contact_partners_body_expr), body_labels),
-                counterpart_shapes=_normalize_for_labels(_to_fnmatch(contact_partners_shape_expr), shape_labels),
+                sensing_obj_bodies=_match_indices("body", body_names_expr, body_labels),
+                sensing_obj_shapes=_match_indices("shape", shape_names_expr, shape_labels),
+                counterpart_bodies=_match_indices("body", contact_partners_body_expr, body_labels),
+                counterpart_shapes=_match_indices("shape", contact_partners_shape_expr, shape_labels),
                 measure_total=True,
                 verbose=verbose,
             )
