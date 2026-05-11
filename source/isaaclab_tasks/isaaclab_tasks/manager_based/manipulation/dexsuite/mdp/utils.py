@@ -38,10 +38,20 @@ def sample_object_point_cloud(num_envs: int, num_points: int, prim_path: str, de
     Returns:
         torch.Tensor: Shape (num_envs, num_points, 3) on `device`.
     """
-    points = torch.zeros((num_envs, num_points, 3), dtype=torch.float32, device=device)
-    xform_cache = UsdGeom.XformCache()
     # Obtain stage handle
     stage = sim_utils.get_current_stage()
+
+    # Newton physics-only scenes may intentionally skip cloned USD specs for env_1..N after the physics model has
+    # already been replicated. Dexsuite Newton currently uses homogeneous object geometry, so reuse env_0's local
+    # point cloud instead of requiring every cloned USD object to exist.
+    if num_envs > 1 and ".*" in prim_path:
+        env_1_path = prim_path.replace(".*", "1")
+        if not stage.GetPrimAtPath(env_1_path).IsValid():
+            env_0_points = sample_object_point_cloud(1, num_points, prim_path, device=device)
+            return env_0_points.expand(num_envs, -1, -1).contiguous()
+
+    points = torch.zeros((num_envs, num_points, 3), dtype=torch.float32, device=device)
+    xform_cache = UsdGeom.XformCache()
 
     for i in range(num_envs):
         # Resolve prim path

@@ -275,6 +275,43 @@ def test_clone_environments_executes_asset_level_plan_without_usd_positions(monk
     assert set_plan_calls == [scene._clone_plan]
 
 
+@pytest.mark.parametrize(
+    ("physics_backend", "clone_usd", "clone_physics_only", "env_root_plan", "expected"),
+    [
+        ("physx", True, False, True, True),
+        ("ovphysx", False, False, True, False),
+        ("newtonmjwarpmanager", True, False, True, True),
+        ("newtonmjwarpmanager", True, True, True, False),
+        ("newtonmjwarpmanager", True, True, False, True),
+    ],
+)
+def test_should_clone_usd_respects_backend_rendering_needs(
+    physics_backend, clone_usd, clone_physics_only, env_root_plan, expected
+):
+    """Newton physics-only scenes skip redundant USD clones while render-capable paths keep them."""
+    from isaaclab.cloner import ClonePlan
+
+    scene = object.__new__(InteractiveScene)
+    scene.physics_backend = physics_backend
+    scene.cloner_cfg = SimpleNamespace(clone_usd=clone_usd)
+    scene.env_fmt = "/World/envs/env_{}"
+    scene.sim = SimpleNamespace(physics_manager=SimpleNamespace(_clone_physics_only=clone_physics_only))
+    if env_root_plan:
+        plan = ClonePlan(
+            sources=(scene.env_fmt.format(0),),
+            destinations=(scene.env_fmt,),
+            clone_mask=torch.ones((1, 3), dtype=torch.bool),
+        )
+    else:
+        plan = ClonePlan(
+            sources=("/World/envs/env_0/Object", "/World/envs/env_1/Object"),
+            destinations=("/World/envs/env_{}/Object", "/World/envs/env_{}/Object"),
+            clone_mask=torch.tensor([[True, False], [False, True]], dtype=torch.bool),
+        )
+
+    assert scene._should_clone_usd(plan) is expected
+
+
 def test_build_clone_plan_from_cfg_plans_multi_and_single_spawners(monkeypatch: pytest.MonkeyPatch):
     """Heterogeneous planning writes source paths for multi and single spawners."""
     from isaaclab.cloner import sequential

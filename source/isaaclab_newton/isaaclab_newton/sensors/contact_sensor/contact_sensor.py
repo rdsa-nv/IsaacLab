@@ -299,6 +299,12 @@ class ContactSensor(BaseContactSensor):
         """Initializes the sensor-related handles and internal buffers."""
         super()._initialize_impl()
 
+        # In Newton physics-only scenes, InteractiveScene may skip authoring cloned USD asset specs while the
+        # Newton model still contains one world per env. SensorBase counts envs from USD parents, so prefer the
+        # Newton model env count when it is available.
+        if NewtonManager._num_envs is not None and NewtonManager._num_envs != self._num_envs:
+            self._configure_env_buffers(NewtonManager._num_envs)
+
         if self.cfg.force_threshold is None:
             self.cfg.force_threshold = 0.0
 

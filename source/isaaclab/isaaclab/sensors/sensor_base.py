@@ -220,6 +220,16 @@ class SensorBase(ABC):
         env_prim_path_expr = self.cfg.prim_path.rsplit("/", 1)[0]
         self._parent_prims = sim_utils.find_matching_prims(env_prim_path_expr)
         self._num_envs = len(self._parent_prims)
+        self._configure_env_buffers(self._num_envs)
+
+        # Initialize debug visualization handle
+        if self._debug_vis_handle is None:
+            # set initial state of debug visualization
+            self.set_debug_vis(self.cfg.debug_vis)
+
+    def _configure_env_buffers(self, num_envs: int) -> None:
+        """Configure per-environment bookkeeping buffers."""
+        self._num_envs = int(num_envs)
         # Create warp env mask arrays for "all envs" cases and resets.
         # Note: We use wp.to_torch() to create zero-copy torch tensor views of warp arrays.
         # This allows warp arrays to be passed to warp kernels while the corresponding torch
@@ -232,11 +242,6 @@ class SensorBase(ABC):
         self._is_outdated = wp.ones(self._num_envs, dtype=wp.bool, device=self._device)
         self._timestamp = wp.zeros(self._num_envs, dtype=wp.float32, device=self._device)
         self._timestamp_last_update = wp.zeros_like(self._timestamp)
-
-        # Initialize debug visualization handle
-        if self._debug_vis_handle is None:
-            # set initial state of debug visualization
-            self.set_debug_vis(self.cfg.debug_vis)
 
     @abstractmethod
     def _update_buffers_impl(self, env_mask: wp.array):

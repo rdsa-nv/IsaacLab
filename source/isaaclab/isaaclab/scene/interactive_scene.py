@@ -293,6 +293,25 @@ class InteractiveScene:
         logger.debug("Built heterogeneous ClonePlan with %d source rows.", len(plan.sources))
         return plan
 
+    def _should_clone_usd(self, plan: cloner.ClonePlan) -> bool:
+        """Return whether env-scoped USD specs should be replicated for this clone plan."""
+        if not self.cloner_cfg.clone_usd:
+            return False
+
+        is_env_root_plan = (
+            len(plan.sources) == 1
+            and plan.sources[0] == self.env_fmt.format(0)
+            and plan.destinations == (self.env_fmt,)
+        )
+        if self.physics_backend.startswith("newton") and is_env_root_plan:
+            # Newton builds homogeneous scenes directly from the clone plan. In headless physics-only runs,
+            # downstream asset/sensor views read Newton model labels rather than cloned USD prim specs, so the full
+            # USD replication pass only adds launch-time work. Keep USD clones when Kit/camera rendering is active
+            # because those paths need the authored scene hierarchy for Fabric/RTX synchronization.
+            return not getattr(self.sim.physics_manager, "_clone_physics_only", False)
+
+        return True
+
     def clone_environments(self, copy_from_source: bool = False):
         """Creates clones of the environment ``/World/envs/env_0``.
 
@@ -326,7 +345,7 @@ class InteractiveScene:
                     positions=self._default_env_origins,
                     device=self.cloner_cfg.device,
                 )
-            if self.cloner_cfg.clone_usd:
+            if self._should_clone_usd(plan):
                 is_env_root_plan = (
                     len(plan.sources) == 1
                     and plan.sources[0] == self.env_fmt.format(0)
