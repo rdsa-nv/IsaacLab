@@ -17,6 +17,17 @@ from pxr import Usd
 from isaaclab_newton.physics import NewtonManager
 
 
+def _is_homogeneous_clone_mapping(sources: Sequence[str], destinations: Sequence[str], mapping: torch.Tensor) -> bool:
+    """Return whether *mapping* represents one source cloned into every environment."""
+    return (
+        len(sources) == 1
+        and len(destinations) == 1
+        and mapping.ndim == 2
+        and mapping.shape[0] == 1
+        and bool(mapping.all().item())
+    )
+
+
 def _build_newton_builder_from_mapping(
     stage: Usd.Stage,
     sources: Sequence[str],
@@ -118,6 +129,24 @@ def _build_newton_builder_from_mapping(
     return builder, stage_info, site_index_map
 
 
+def _should_rename_builder_labels(sources: Sequence[str], destinations: Sequence[str], mapping: torch.Tensor) -> bool:
+    """Return whether expanded Newton labels need env-specific USD paths.
+
+    In headless Newton physics-only runs, homogeneous env-root scenes do not author
+    cloned USD asset specs.  Newton selections can operate on duplicated env_0
+    labels because pattern matching returns every repeated label index and the
+    model's world arrays still separate environments.  Keeping compact labels
+    avoids another O(num_envs * labels_per_env) pass over the expanded builder.
+
+    Heterogeneous scenes keep unique labels because different source rows may
+    populate different envs and downstream tooling can inspect destination paths.
+    """
+    return not (
+        getattr(NewtonManager, "_clone_physics_only", False)
+        and _is_homogeneous_clone_mapping(sources, destinations, mapping)
+    )
+
+
 def _rename_builder_labels(
     builder: ModelBuilder,
     sources: Sequence[str],
@@ -192,7 +221,8 @@ def newton_physics_replicate(
         up_axis=up_axis,
         simplify_meshes=simplify_meshes,
     )
-    _rename_builder_labels(builder, sources, destinations, env_ids, mapping)
+    if _should_rename_builder_labels(sources, destinations, mapping):
+        _rename_builder_labels(builder, sources, destinations, env_ids, mapping)
     NewtonManager._cl_site_index_map = site_index_map
     NewtonManager.set_builder(builder)
     NewtonManager._num_envs = mapping.size(1)
@@ -241,7 +271,8 @@ def newton_visualizer_prebuild(
         up_axis=up_axis,
         simplify_meshes=simplify_meshes,
     )
-    _rename_builder_labels(builder, sources, destinations, env_ids, mapping)
+    if _should_rename_builder_labels(sources, destinations, mapping):
+        _rename_builder_labels(builder, sources, destinations, env_ids, mapping)
     model = builder.finalize(device=device)
     state = model.state()
     return model, state
