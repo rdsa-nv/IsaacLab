@@ -353,6 +353,10 @@ class ContactSensor(BaseContactSensor):
         shape_labels = self._get_model_labels("shape")
 
         def get_name(idx, kind):
+            if kind == "body":
+                return body_labels[int(idx)].split("/")[-1]
+            if kind == "shape":
+                return shape_labels[int(idx)].split("/")[-1]
             kind_name = getattr(kind, "name", None)
             kind_value = getattr(kind, "value", kind)
             if kind_name == "BODY" or kind_value == 2:
@@ -373,21 +377,21 @@ class ContactSensor(BaseContactSensor):
                 ]
             return flat_values
 
-        flat_sensing = list(
-            zip(
-                flatten_metadata(self.contact_view.sensing_obj_idx),
-                flatten_metadata(self.contact_view.sensing_obj_type),
-            )
-        )
+        def pair_metadata(indices, kind):
+            flat_indices = flatten_metadata(indices)
+            if isinstance(kind, str) or kind is None:
+                flat_kinds = [kind] * len(flat_indices)
+            else:
+                flat_kinds = flatten_metadata(kind)
+                if len(flat_kinds) == 1 and len(flat_indices) > 1:
+                    flat_kinds = flat_kinds * len(flat_indices)
+            return list(zip(flat_indices, flat_kinds))
+
+        flat_sensing = pair_metadata(self.contact_view.sensing_obj_idx, self.contact_view.sensing_obj_type)
         self._sensor_names = [get_name(idx, kind) for idx, kind in flat_sensing]
         # Assumes the environments are processed in order.
         self._sensor_names = self._sensor_names[: self._num_sensors]
-        flat_counterparts = list(
-            zip(
-                flatten_metadata(self.contact_view.counterpart_indices),
-                flatten_metadata(self.contact_view.counterpart_type),
-            )
-        )
+        flat_counterparts = pair_metadata(self.contact_view.counterpart_indices, self.contact_view.counterpart_type)
         self._filter_object_names = [get_name(idx, kind) for idx, kind in flat_counterparts]
 
         force_matrix = self.contact_view.force_matrix
