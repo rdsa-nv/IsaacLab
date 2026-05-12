@@ -19,6 +19,10 @@ from isaaclab_newton.cloner.newton_replicate import (
 from isaaclab_newton.physics import NewtonManager
 
 
+def _as_list(value):
+    return value.tolist() if hasattr(value, "tolist") else value
+
+
 @pytest.fixture(autouse=True)
 def restore_clone_physics_only():
     prev = NewtonManager._clone_physics_only
@@ -120,15 +124,21 @@ def test_bulk_homogeneous_worlds_match_add_builder_for_rigid_scene():
     site_map = _bulk_add_homogeneous_worlds(bulk_builder, proto, positions, {"site": [1]})
 
     assert bulk_builder.world_count == loop_builder.world_count
-    assert bulk_builder.body_world == loop_builder.body_world
-    assert bulk_builder.shape_world == loop_builder.shape_world
-    assert bulk_builder.joint_world == loop_builder.joint_world
-    assert bulk_builder.shape_body == loop_builder.shape_body
-    assert bulk_builder.joint_parent == loop_builder.joint_parent
-    assert bulk_builder.joint_child == loop_builder.joint_child
-    assert bulk_builder.joint_q == loop_builder.joint_q
+    assert _as_list(bulk_builder.body_world) == loop_builder.body_world
+    assert _as_list(bulk_builder.shape_world) == loop_builder.shape_world
+    assert _as_list(bulk_builder.joint_world) == loop_builder.joint_world
+    assert _as_list(bulk_builder.shape_body) == loop_builder.shape_body
+    assert _as_list(bulk_builder.joint_parent) == loop_builder.joint_parent
+    assert _as_list(bulk_builder.joint_child) == loop_builder.joint_child
+    assert _as_list(bulk_builder.joint_q) == loop_builder.joint_q
+    assert list(bulk_builder.body_shapes.keys()) == list(loop_builder.body_shapes.keys())
+    for body_idx, shapes in loop_builder.body_shapes.items():
+        assert bulk_builder.body_shapes[body_idx] == shapes
+        assert bulk_builder.body_shapes.get(body_idx) == shapes
+    assert bulk_builder.body_shapes.get(999, []) == []
     assert bulk_builder.body_label == loop_builder.body_label
     assert bulk_builder.shape_label == loop_builder.shape_label
+    assert _as_list(bulk_builder.shape_collision_group) == loop_builder.shape_collision_group
     assert bulk_builder.custom_attributes["test:body_index"].values == loop_builder.custom_attributes[
         "test:body_index"
     ].values

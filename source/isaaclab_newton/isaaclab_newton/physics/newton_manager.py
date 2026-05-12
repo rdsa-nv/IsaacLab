@@ -15,6 +15,7 @@ from abc import abstractmethod
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+import numpy as np
 import warp as wp
 
 # Load CUDA runtime for relaxed-mode graph capture (RTX-compatible).
@@ -99,6 +100,127 @@ def _scatter_reset_masks_from_ids(
     world = env_ids[i]
     world_mask[world] = wp.int32(1)
     fk_mask[articulation_ids[world, arti]] = True
+
+
+def _world_start_from_entity_worlds(entity_world, entity_count: int, world_count: int) -> list[int]:
+    """Build Newton's per-world start array from a world-index array."""
+    starts = np.zeros(world_count + 2, dtype=np.int64)
+    if entity_count == 0:
+        return starts.tolist()
+
+    entity_world_np = np.asarray(entity_world, dtype=np.int32)
+    non_global = np.flatnonzero(entity_world_np != -1)
+    front_global_count = int(non_global[0]) if non_global.size else int(entity_count)
+    starts[0] = front_global_count
+
+    world_mask = entity_world_np >= 0
+    if np.any(world_mask):
+        world_counts = np.bincount(entity_world_np[world_mask], minlength=world_count).astype(np.int64, copy=False)
+        starts[1 : world_count + 1] = front_global_count + np.cumsum(world_counts)
+    else:
+        starts[1 : world_count + 1] = front_global_count
+    starts[-1] = entity_count
+    return starts.tolist()
+
+
+def _world_start_from_joint_space(joint_world, joint_starts, joint_count: int, space_count: int, world_count: int):
+    """Build Newton's per-world start array for joint coordinates, DoFs, or constraints."""
+    starts = np.zeros(world_count + 2, dtype=np.int64)
+    if joint_count == 0:
+        return starts.tolist()
+
+    joint_world_np = np.asarray(joint_world, dtype=np.int32)
+    joint_starts_np = np.asarray(joint_starts, dtype=np.int64)
+    joint_starts_ext = np.empty(joint_count + 1, dtype=np.int64)
+    joint_starts_ext[:-1] = joint_starts_np
+    joint_starts_ext[-1] = space_count
+    joint_space_counts = np.diff(joint_starts_ext)
+
+    non_global = np.flatnonzero(joint_world_np != -1)
+    front_global_joint_count = int(non_global[0]) if non_global.size else int(joint_count)
+    front_global_space_count = int(joint_space_counts[:front_global_joint_count].sum())
+    starts[0] = front_global_space_count
+
+    world_mask = joint_world_np >= 0
+    if np.any(world_mask):
+        world_counts = np.bincount(
+            joint_world_np[world_mask],
+            weights=joint_space_counts[world_mask],
+            minlength=world_count,
+        ).astype(np.int64, copy=False)
+        starts[1 : world_count + 1] = front_global_space_count + np.cumsum(world_counts)
+    else:
+        starts[1 : world_count + 1] = front_global_space_count
+    starts[-1] = space_count
+    return starts.tolist()
+
+
+def _precompute_builder_world_starts(builder: ModelBuilder) -> None:
+    """Precompute start arrays for generated homogeneous builders."""
+    world_count = max(1, builder.world_count)
+    builder.particle_world_start = _world_start_from_entity_worlds(
+        builder.particle_world, builder.particle_count, world_count
+    )
+    builder.body_world_start = _world_start_from_entity_worlds(builder.body_world, builder.body_count, world_count)
+    builder.shape_world_start = _world_start_from_entity_worlds(builder.shape_world, builder.shape_count, world_count)
+    builder.joint_world_start = _world_start_from_entity_worlds(builder.joint_world, builder.joint_count, world_count)
+    builder.articulation_world_start = _world_start_from_entity_worlds(
+        builder.articulation_world, builder.articulation_count, world_count
+    )
+    builder.equality_constraint_world_start = _world_start_from_entity_worlds(
+        builder.equality_constraint_world, len(builder.equality_constraint_type), world_count
+    )
+    builder.joint_dof_world_start = _world_start_from_joint_space(
+        builder.joint_world, builder.joint_qd_start, builder.joint_count, builder.joint_dof_count, world_count
+    )
+    builder.joint_coord_world_start = _world_start_from_joint_space(
+        builder.joint_world, builder.joint_q_start, builder.joint_count, builder.joint_coord_count, world_count
+    )
+    builder.joint_constraint_world_start = _world_start_from_joint_space(
+        builder.joint_world, builder.joint_cts_start, builder.joint_count, builder.joint_constraint_count, world_count
+    )
+
+
+def _uses_mujoco_internal_contacts() -> bool:
+    cfg = PhysicsManager._cfg
+    solver_cfg = getattr(cfg, "solver_cfg", None)
+    return bool(
+        solver_cfg is not None
+        and getattr(solver_cfg, "solver_type", None) == "mujoco_warp"
+        and getattr(solver_cfg, "use_mujoco_contacts", False)
+    )
+
+
+@contextlib.contextmanager
+def _homogeneous_finalize_shortcuts(builder: ModelBuilder, skip_shape_contact_pairs: bool):
+    """Install homogeneous-only shortcuts around Newton's generic finalizer."""
+    original_build_world_starts = getattr(builder, "_build_world_starts")
+    original_find_shape_contact_pairs = getattr(builder, "find_shape_contact_pairs")
+    had_build_world_starts = "_build_world_starts" in builder.__dict__
+    had_find_shape_contact_pairs = "find_shape_contact_pairs" in builder.__dict__
+
+    _precompute_builder_world_starts(builder)
+    builder._build_world_starts = lambda: None
+
+    if skip_shape_contact_pairs:
+
+        def _skip_shape_contact_pairs(model: Model) -> None:
+            model.shape_contact_pairs = wp.empty(0, dtype=wp.vec2i, device=model.device)
+            model.shape_contact_pair_count = 0
+
+        builder.find_shape_contact_pairs = _skip_shape_contact_pairs
+
+    try:
+        yield
+    finally:
+        if had_build_world_starts:
+            builder._build_world_starts = original_build_world_starts
+        else:
+            delattr(builder, "_build_world_starts")
+        if had_find_shape_contact_pairs:
+            builder.find_shape_contact_pairs = original_find_shape_contact_pairs
+        elif "find_shape_contact_pairs" in builder.__dict__:
+            delattr(builder, "find_shape_contact_pairs")
 
 
 class NewtonManager(PhysicsManager):
@@ -757,8 +879,21 @@ class NewtonManager(PhysicsManager):
         if cls._pending_extended_state_attributes:
             cls._builder.request_state_attributes(*cls._pending_extended_state_attributes)
             NewtonManager._pending_extended_state_attributes = set()
+        homogeneous_clone_info = getattr(cls._builder, "_isaaclab_newton_homogeneous_clone", None)
+        finalize_kwargs = {"skip_all_validations": True} if homogeneous_clone_info is not None else {}
+        finalize_context = (
+            _homogeneous_finalize_shortcuts(
+                cls._builder,
+                skip_shape_contact_pairs=_uses_mujoco_internal_contacts(),
+            )
+            if homogeneous_clone_info is not None
+            else contextlib.nullcontext()
+        )
         with Timer(name="newton_finalize_builder", msg="Finalize builder took:"):
-            NewtonManager._model = cls._builder.finalize(device=device)
+            with finalize_context:
+                NewtonManager._model = cls._builder.finalize(device=device, **finalize_kwargs)
+                if homogeneous_clone_info is not None:
+                    NewtonManager._model._isaaclab_newton_homogeneous_clone = homogeneous_clone_info
             cls._model.set_gravity(cls._gravity_vector)
             cls._model.num_envs = cls._num_envs
 
@@ -1319,6 +1454,8 @@ class NewtonManager(PhysicsManager):
                 return None
             if isinstance(expr, str):
                 return expr.replace(".*", "*")
+            if expr and isinstance(expr[0], int):
+                return expr
             return [p.replace(".*", "*") for p in expr]
 
         def _normalize_for_labels(expr: str | list[str] | None, labels: list[str]) -> str | list[str] | None:
@@ -1330,6 +1467,8 @@ class NewtonManager(PhysicsManager):
             """
             if expr is None or not labels:
                 return expr
+            if isinstance(expr, list) and expr and isinstance(expr[0], int):
+                return expr
             label_has_paths = any("/" in lbl for lbl in labels)
             items = [expr] if isinstance(expr, str) else list(expr)
             expr_uses_paths = any("/" in p for p in items)
@@ -1339,7 +1478,7 @@ class NewtonManager(PhysicsManager):
             return normalized[0] if isinstance(expr, str) else normalized
 
         def _match_indices(kind: str, expr: str | list[str] | None, labels: list[str]) -> list[int] | None:
-            expr = _normalize_for_labels(_to_fnmatch(expr), labels)
+            expr = _to_fnmatch(expr)
             if expr is None:
                 return None
             if isinstance(expr, list) and expr and isinstance(expr[0], int):
@@ -1350,7 +1489,51 @@ class NewtonManager(PhysicsManager):
             key = (kind, patterns[0] if len(patterns) == 1 else patterns)
             indices = cls._contact_label_match_cache.get(key)
             if indices is None:
-                indices = [idx for idx, label in enumerate(labels) if any(fnmatch.fnmatch(label, p) for p in patterns)]
+                homogeneous_info = getattr(cls._model, "_isaaclab_newton_homogeneous_clone", None)
+                label_key = f"{kind}_labels"
+                start_key = f"start_{kind}_idx"
+                count_key = f"{kind}_count"
+                if homogeneous_info is None or label_key not in homogeneous_info:
+                    expr = _normalize_for_labels(expr, labels)
+                    patterns = (expr,) if isinstance(expr, str) else tuple(expr)
+                    indices = [
+                        idx for idx, label in enumerate(labels) if any(fnmatch.fnmatch(label, p) for p in patterns)
+                    ]
+                else:
+                    local_labels = homogeneous_info[label_key]
+                    start_idx = homogeneous_info[start_key]
+                    entity_count = homogeneous_info[count_key]
+                    num_worlds = homogeneous_info["num_worlds"]
+                    local_end = start_idx + num_worlds * entity_count
+                    if entity_count != len(local_labels) or local_end > len(labels):
+                        indices = [
+                            idx
+                            for idx, label in enumerate(labels)
+                            if any(fnmatch.fnmatch(label, p) for p in patterns)
+                        ]
+                    else:
+                        prefix_indices = [
+                            idx
+                            for idx, label in enumerate(labels[:start_idx])
+                            if any(fnmatch.fnmatch(label, p) for p in patterns)
+                        ]
+                        local_indices = [
+                            idx
+                            for idx, label in enumerate(local_labels)
+                            if any(fnmatch.fnmatch(label, p) for p in patterns)
+                        ]
+                        suffix_indices = [
+                            local_end + idx
+                            for idx, label in enumerate(labels[local_end:])
+                            if any(fnmatch.fnmatch(label, p) for p in patterns)
+                        ]
+                        indices = prefix_indices
+                        indices.extend(
+                            start_idx + world_idx * entity_count + local_idx
+                            for world_idx in range(num_worlds)
+                            for local_idx in local_indices
+                        )
+                        indices.extend(suffix_indices)
                 cls._contact_label_match_cache[key] = indices
             return indices
 
@@ -1361,10 +1544,8 @@ class NewtonManager(PhysicsManager):
             _hashable_key(contact_partners_shape_expr),
         )
 
-        body_labels = cls._model.body_label if isinstance(cls._model.body_label, list) else list(cls._model.body_label)
-        shape_labels = (
-            cls._model.shape_label if isinstance(cls._model.shape_label, list) else list(cls._model.shape_label)
-        )
+        body_labels = cls._model.body_label
+        shape_labels = cls._model.shape_label
 
         with Timer(name="newton_contact_sensor", msg="Contact sensor construction took:"):
             sensor = NewtonContactSensor(

@@ -9,6 +9,7 @@ from collections.abc import Sequence
 from dataclasses import replace
 from typing import Any
 
+import numpy as np
 import torch
 import warp as wp
 from newton import JointType, Model, ModelBuilder, solvers
@@ -142,6 +143,116 @@ def _translated_transform(transform: wp.transform, delta: Sequence[float]) -> wp
         transform[5],
         transform[6],
     )
+
+
+def _transforms_to_numpy(transforms: Sequence[wp.transform] | np.ndarray) -> np.ndarray:
+    """Return transforms as an ``(N, 7)`` float32 array."""
+    if isinstance(transforms, np.ndarray):
+        return transforms.astype(np.float32, copy=False).reshape((-1, 7))
+    if len(transforms) == 0:
+        return np.empty((0, 7), dtype=np.float32)
+    return np.asarray([tuple(transform) for transform in transforms], dtype=np.float32)
+
+
+def _append_numpy(values: Sequence[Any] | np.ndarray, block: np.ndarray) -> np.ndarray:
+    """Append *block* to a builder field, preserving a NumPy representation."""
+    if len(values) == 0:
+        return block
+    existing = np.asarray(values, dtype=block.dtype)
+    if block.ndim > 1:
+        existing = existing.reshape((-1, block.shape[-1]))
+    return np.concatenate((existing, block), axis=0)
+
+
+class _HomogeneousBodyShapes:
+    """Lazy ``body_shapes`` mapping for homogeneous expanded worlds."""
+
+    def __init__(
+        self,
+        prefix_body_shapes: dict[int, list[int]],
+        global_shapes: list[int],
+        proto_body_shapes: dict[int, Sequence[int]],
+        start_body_idx: int,
+        start_shape_idx: int,
+        body_count: int,
+        shape_count: int,
+        num_worlds: int,
+    ):
+        self._prefix_body_shapes = {int(body): list(shapes) for body, shapes in prefix_body_shapes.items()}
+        self._global_shapes = list(global_shapes)
+        self._proto_body_shapes = {
+            int(body): tuple(int(shape) for shape in shapes) for body, shapes in proto_body_shapes.items()
+        }
+        self._start_body_idx = int(start_body_idx)
+        self._start_shape_idx = int(start_shape_idx)
+        self._body_count = int(body_count)
+        self._shape_count = int(shape_count)
+        self._num_worlds = int(num_worlds)
+
+    def __len__(self) -> int:
+        return 1 + len(self._prefix_body_shapes) + self._body_count * self._num_worlds
+
+    def __bool__(self) -> bool:
+        return True
+
+    def __iter__(self):
+        return self.keys()
+
+    def __contains__(self, body_idx: int) -> bool:
+        if body_idx == -1 or body_idx in self._prefix_body_shapes:
+            return True
+        return self._replica_body(body_idx) is not None
+
+    def __getitem__(self, body_idx: int) -> list[int]:
+        if body_idx == -1:
+            return self._global_shapes
+        if body_idx in self._prefix_body_shapes:
+            return self._prefix_body_shapes[body_idx]
+
+        replica_body = self._replica_body(body_idx)
+        if replica_body is None:
+            raise KeyError(body_idx)
+
+        env_index, proto_body_idx = replica_body
+        shape_base = self._start_shape_idx + env_index * self._shape_count
+        return [shape_base + shape_idx for shape_idx in self._proto_body_shapes.get(proto_body_idx, ())]
+
+    def get(self, body_idx: int, default: Any = None) -> list[int] | Any:
+        try:
+            return self[body_idx]
+        except KeyError:
+            return default
+
+    def items(self):
+        yield -1, self._global_shapes
+        yield from self._prefix_body_shapes.items()
+        for env_index in range(self._num_worlds):
+            body_base = self._start_body_idx + env_index * self._body_count
+            shape_base = self._start_shape_idx + env_index * self._shape_count
+            for proto_body_idx in range(self._body_count):
+                shapes = [
+                    shape_base + shape_idx for shape_idx in self._proto_body_shapes.get(proto_body_idx, ())
+                ]
+                yield body_base + proto_body_idx, shapes
+
+    def keys(self):
+        for body_idx, _ in self.items():
+            yield body_idx
+
+    def values(self):
+        for _, shapes in self.items():
+            yield shapes
+
+    def _replica_body(self, body_idx: int) -> tuple[int, int] | None:
+        if self._body_count == 0:
+            return None
+        local_body_idx = int(body_idx) - self._start_body_idx
+        if local_body_idx < 0:
+            return None
+        env_index, proto_body_idx = divmod(local_body_idx, self._body_count)
+        if env_index >= self._num_worlds:
+            return None
+        return env_index, proto_body_idx
 
 
 def _offset_index(value: int, offset: int) -> int:
@@ -332,7 +443,7 @@ def _bulk_add_homogeneous_worlds(
     """Add one rigid/articulation prototype to every world using bulk list operations."""
     num_worlds = positions.size(0)
     env0_pos = positions[0]
-    deltas = (positions - env0_pos).detach().cpu().tolist()
+    deltas = (positions - env0_pos).detach().cpu().numpy().astype(np.float32, copy=False)
 
     if builder.current_world != -1:
         raise RuntimeError("Bulk Newton replication requires the destination builder to be in global scope.")
@@ -364,67 +475,118 @@ def _bulk_add_homogeneous_worlds(
     builder.world_count += num_worlds
     builder.world_gravity.extend([world_gravity] * num_worlds)
 
-    for env_index, delta in enumerate(deltas):
-        body_base = start_body_idx + env_index * proto.body_count
-        shape_base = start_shape_idx + env_index * proto.shape_count
-        joint_base = start_joint_idx + env_index * proto.joint_count
-        coord_base = start_joint_coord_idx + env_index * proto.joint_coord_count
-        dof_base = start_joint_dof_idx + env_index * proto.joint_dof_count
-        cts_base = start_joint_constraint_idx + env_index * proto.joint_constraint_count
-        articulation_base = start_articulation_idx + env_index * proto.articulation_count
+    body_offsets = start_body_idx + np.arange(num_worlds, dtype=np.int32) * proto.body_count
+    shape_offsets = start_shape_idx + np.arange(num_worlds, dtype=np.int32) * proto.shape_count
 
-        for shape_idx, body_idx in enumerate(proto.shape_body):
-            if body_idx > -1:
-                builder.shape_body.append(body_idx + body_base)
-                builder.shape_transform.append(proto.shape_transform[shape_idx])
-            else:
-                builder.shape_body.append(-1)
-                builder.shape_transform.append(_translated_transform(proto.shape_transform[shape_idx], delta))
+    if proto.shape_count:
+        proto_shape_body = np.asarray(proto.shape_body, dtype=np.int32)
+        shape_body_block = np.tile(proto_shape_body, (num_worlds, 1))
+        attached_shapes = proto_shape_body > -1
+        if np.any(attached_shapes):
+            shape_body_block[:, attached_shapes] += body_offsets[:, None]
+        builder.shape_body = _append_numpy(builder.shape_body, shape_body_block.reshape(-1))
 
-        for body_idx, shapes in proto.body_shapes.items():
-            translated_shapes = [shape_base + shape_idx for shape_idx in shapes]
-            if body_idx == -1:
-                builder.body_shapes[-1].extend(translated_shapes)
-            else:
-                builder.body_shapes[body_base + body_idx] = translated_shapes
+        shape_transform_block = np.tile(_transforms_to_numpy(proto.shape_transform), (num_worlds, 1, 1))
+        root_shapes = proto_shape_body == -1
+        if np.any(root_shapes):
+            shape_transform_block[:, root_shapes, :3] += deltas[:, None, :]
+        builder.shape_transform = _append_numpy(builder.shape_transform, shape_transform_block.reshape((-1, 7)))
 
-        if proto.joint_count:
-            joint_X_p = list(proto.joint_X_p)
-            joint_q = list(proto.joint_q)
-            for joint_idx, joint_type in enumerate(proto.joint_type):
-                if int(joint_type) == int(JointType.FREE):
-                    q_start = proto.joint_q_start[joint_idx]
-                    joint_q[q_start] += float(delta[0])
-                    joint_q[q_start + 1] += float(delta[1])
-                    joint_q[q_start + 2] += float(delta[2])
-                elif proto.joint_parent[joint_idx] == -1:
-                    joint_X_p[joint_idx] = _translated_transform(proto.joint_X_p[joint_idx], delta)
+    prefix_body_shapes = {body_idx: shapes for body_idx, shapes in builder.body_shapes.items() if body_idx != -1}
+    global_shapes = list(builder.body_shapes.get(-1, []))
+    proto_global_shapes = np.asarray(proto.body_shapes.get(-1, []), dtype=np.int32)
+    if proto_global_shapes.size:
+        global_shapes.extend((shape_offsets[:, None] + proto_global_shapes[None, :]).reshape(-1).tolist())
+    builder.body_shapes = _HomogeneousBodyShapes(
+        prefix_body_shapes,
+        global_shapes,
+        {body_idx: shapes for body_idx, shapes in proto.body_shapes.items() if body_idx != -1},
+        start_body_idx,
+        start_shape_idx,
+        proto.body_count,
+        proto.shape_count,
+        num_worlds,
+    )
 
-            builder.joint_X_p.extend(joint_X_p)
-            builder.joint_q.extend(joint_q)
-            builder.articulation_start.extend(joint_base + start for start in proto.articulation_start)
+    if proto.joint_count:
+        joint_offsets = start_joint_idx + np.arange(num_worlds, dtype=np.int32) * proto.joint_count
+        coord_offsets = start_joint_coord_idx + np.arange(num_worlds, dtype=np.int32) * proto.joint_coord_count
+        dof_offsets = start_joint_dof_idx + np.arange(num_worlds, dtype=np.int32) * proto.joint_dof_count
+        cts_offsets = start_joint_constraint_idx + np.arange(num_worlds, dtype=np.int32) * proto.joint_constraint_count
+        articulation_offsets = start_articulation_idx + np.arange(num_worlds, dtype=np.int32) * proto.articulation_count
 
-            new_parents = [_offset_index(parent, body_base) for parent in proto.joint_parent]
-            new_children = [child + body_base for child in proto.joint_child]
-            builder.joint_parent.extend(new_parents)
-            builder.joint_child.extend(new_children)
-            for local_joint_idx, (parent, child) in enumerate(zip(new_parents, new_children, strict=True)):
-                new_joint_idx = joint_base + local_joint_idx
-                builder.joint_parents.setdefault(child, []).append((parent, new_joint_idx))
-                builder.joint_children.setdefault(parent, []).append((child, new_joint_idx))
+        proto_joint_type = np.asarray([int(joint_type) for joint_type in proto.joint_type], dtype=np.int32)
+        proto_joint_parent = np.asarray(proto.joint_parent, dtype=np.int32)
+        proto_joint_child = np.asarray(proto.joint_child, dtype=np.int32)
 
-            builder.joint_q_start.extend(coord_base + start for start in proto.joint_q_start)
-            builder.joint_qd_start.extend(dof_base + start for start in proto.joint_qd_start)
-            builder.joint_cts_start.extend(cts_base + start for start in proto.joint_cts_start)
-            builder.joint_articulation.extend(
-                _offset_index(articulation, articulation_base) for articulation in proto.joint_articulation
-            )
+        joint_X_p_block = np.tile(_transforms_to_numpy(proto.joint_X_p), (num_worlds, 1, 1))
+        root_parent_joints = (proto_joint_parent == -1) & (proto_joint_type != int(JointType.FREE))
+        if np.any(root_parent_joints):
+            joint_X_p_block[:, root_parent_joints, :3] += deltas[:, None, :]
+        builder.joint_X_p = _append_numpy(builder.joint_X_p, joint_X_p_block.reshape((-1, 7)))
 
-        builder.body_q.extend(_translated_transform(body_q, delta) for body_q in proto.body_q)
-        builder.shape_collision_group.extend(proto.shape_collision_group)
-        builder.shape_collision_filter_pairs.extend(
-            (shape_base + shape_a, shape_base + shape_b) for shape_a, shape_b in proto.shape_collision_filter_pairs
+        joint_q_block = np.tile(np.asarray(proto.joint_q, dtype=np.float32), (num_worlds, 1))
+        for joint_idx in np.nonzero(proto_joint_type == int(JointType.FREE))[0].tolist():
+            q_start = proto.joint_q_start[joint_idx]
+            joint_q_block[:, q_start : q_start + 3] += deltas
+        builder.joint_q = _append_numpy(builder.joint_q, joint_q_block.reshape(-1))
+
+        builder.articulation_start.extend(
+            (joint_offsets[:, None] + np.asarray(proto.articulation_start, dtype=np.int32)[None, :])
+            .reshape(-1)
+            .tolist()
         )
+
+        joint_parent_block = np.tile(proto_joint_parent, (num_worlds, 1))
+        valid_parents = proto_joint_parent != -1
+        if np.any(valid_parents):
+            joint_parent_block[:, valid_parents] += body_offsets[:, None]
+        joint_child_block = np.tile(proto_joint_child, (num_worlds, 1)) + body_offsets[:, None]
+        builder.joint_parent = _append_numpy(builder.joint_parent, joint_parent_block.reshape(-1))
+        builder.joint_child = _append_numpy(builder.joint_child, joint_child_block.reshape(-1))
+
+        # Keep builder-side lookup dictionaries valid for callbacks that inspect
+        # the builder before finalization. Finalization itself uses the flat arrays.
+        for env_index in range(num_worlds):
+            joint_base = int(joint_offsets[env_index])
+            for local_joint_idx, (parent, child) in enumerate(
+                zip(joint_parent_block[env_index], joint_child_block[env_index], strict=True)
+            ):
+                new_joint_idx = joint_base + local_joint_idx
+                builder.joint_parents.setdefault(int(child), []).append((int(parent), new_joint_idx))
+                builder.joint_children.setdefault(int(parent), []).append((int(child), new_joint_idx))
+
+        builder.joint_q_start.extend(
+            (coord_offsets[:, None] + np.asarray(proto.joint_q_start, dtype=np.int32)[None, :]).reshape(-1).tolist()
+        )
+        builder.joint_qd_start.extend(
+            (dof_offsets[:, None] + np.asarray(proto.joint_qd_start, dtype=np.int32)[None, :]).reshape(-1).tolist()
+        )
+        builder.joint_cts_start.extend(
+            (cts_offsets[:, None] + np.asarray(proto.joint_cts_start, dtype=np.int32)[None, :]).reshape(-1).tolist()
+        )
+
+        proto_joint_articulation = np.asarray(proto.joint_articulation, dtype=np.int32)
+        joint_articulation_block = np.tile(proto_joint_articulation, (num_worlds, 1))
+        valid_articulations = proto_joint_articulation >= 0
+        if np.any(valid_articulations):
+            joint_articulation_block[:, valid_articulations] += articulation_offsets[:, None]
+        builder.joint_articulation = _append_numpy(
+            builder.joint_articulation, joint_articulation_block.reshape(-1)
+        )
+
+    if proto.body_count:
+        body_q_block = np.tile(_transforms_to_numpy(proto.body_q), (num_worlds, 1, 1))
+        body_q_block[:, :, :3] += deltas[:, None, :]
+        builder.body_q = _append_numpy(builder.body_q, body_q_block.reshape((-1, 7)))
+
+    if proto.shape_collision_group:
+        shape_collision_group_block = np.tile(np.asarray(proto.shape_collision_group, dtype=np.int32), num_worlds)
+        builder.shape_collision_group = _append_numpy(builder.shape_collision_group, shape_collision_group_block)
+    if proto.shape_collision_filter_pairs:
+        proto_pairs = np.asarray(proto.shape_collision_filter_pairs, dtype=np.int32)
+        pair_block = np.tile(proto_pairs, (num_worlds, 1, 1)) + shape_offsets[:, None, None]
+        builder.shape_collision_filter_pairs.extend(map(tuple, pair_block.reshape((-1, 2)).tolist()))
 
     for world_idx in range(start_world_idx, start_world_idx + num_worlds):
         builder.body_world.extend([world_idx] * proto.body_count)
@@ -437,6 +599,16 @@ def _bulk_add_homogeneous_worlds(
 
     for attr in _BULK_REPEATED_ATTRS:
         getattr(builder, attr).extend(getattr(proto, attr) * num_worlds)
+
+    builder._isaaclab_newton_homogeneous_clone = {
+        "start_body_idx": start_body_idx,
+        "start_shape_idx": start_shape_idx,
+        "body_count": proto.body_count,
+        "shape_count": proto.shape_count,
+        "num_worlds": num_worlds,
+        "body_labels": list(proto.body_label),
+        "shape_labels": list(proto.shape_label),
+    }
 
     builder.joint_dof_count += proto.joint_dof_count * num_worlds
     builder.joint_coord_count += proto.joint_coord_count * num_worlds
