@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Sequence
 from dataclasses import replace
 from typing import Any
@@ -105,6 +106,57 @@ _BULK_REPEATED_ATTRS = (
     "tet_materials",
 )
 
+_BULK_NUMPY_REPEATED_ATTR_DTYPES = {
+    "body_inertia": np.float32,
+    "body_mass": np.float32,
+    "body_inv_inertia": np.float32,
+    "body_inv_mass": np.float32,
+    "body_com": np.float32,
+    "body_lock_inertia": np.bool_,
+    "body_flags": np.int32,
+    "body_qd": np.float32,
+    "joint_type": np.int32,
+    "joint_enabled": np.bool_,
+    "joint_collision_filter_parent": np.bool_,
+    "joint_X_c": np.float32,
+    "joint_armature": np.float32,
+    "joint_axis": np.float32,
+    "joint_dof_dim": np.int32,
+    "joint_qd": np.float32,
+    "joint_cts": np.float32,
+    "joint_f": np.float32,
+    "joint_act": np.float32,
+    "joint_target_pos": np.float32,
+    "joint_target_vel": np.float32,
+    "joint_limit_lower": np.float32,
+    "joint_limit_upper": np.float32,
+    "joint_limit_ke": np.float32,
+    "joint_limit_kd": np.float32,
+    "joint_target_ke": np.float32,
+    "joint_target_kd": np.float32,
+    "joint_target_mode": np.int32,
+    "joint_effort_limit": np.float32,
+    "joint_velocity_limit": np.float32,
+    "joint_friction": np.float32,
+    "particle_qd": np.float32,
+    "particle_mass": np.float32,
+    "particle_radius": np.float32,
+    "particle_flags": np.int32,
+    "edge_rest_angle": np.float32,
+    "edge_rest_length": np.float32,
+    "edge_bending_properties": np.float32,
+    "spring_rest_length": np.float32,
+    "spring_stiffness": np.float32,
+    "spring_damping": np.float32,
+    "spring_control": np.float32,
+    "tri_poses": np.float32,
+    "tri_activations": np.float32,
+    "tri_materials": np.float32,
+    "tet_poses": np.float32,
+    "tet_activations": np.float32,
+    "tet_materials": np.float32,
+}
+
 _BUILTIN_FREQUENCY_KEYS = {
     Model.AttributeFrequency.BODY: "body",
     Model.AttributeFrequency.SHAPE: "shape",
@@ -162,6 +214,28 @@ def _append_numpy(values: Sequence[Any] | np.ndarray, block: np.ndarray) -> np.n
     if block.ndim > 1:
         existing = existing.reshape((-1, block.shape[-1]))
     return np.concatenate((existing, block), axis=0)
+
+
+def _append_repeated_numpy(
+    values: Sequence[Any] | np.ndarray,
+    proto_values: Sequence[Any],
+    num_worlds: int,
+    dtype: np.dtype,
+) -> Sequence[Any] | np.ndarray:
+    """Append homogeneous repetitions of *proto_values* as one dense NumPy block."""
+    if len(proto_values) == 0:
+        return np.asarray(values, dtype=dtype) if isinstance(values, np.ndarray) else values
+    try:
+        proto_array = np.asarray(proto_values, dtype=dtype)
+    except (TypeError, ValueError):
+        # Some optional Newton fields use None sentinels. Keep those on the
+        # generic list path so the upstream finalizer sees the same values.
+        existing = values.tolist() if isinstance(values, np.ndarray) else list(values)
+        existing.extend(list(proto_values) * num_worlds)
+        return existing
+    tile_shape = (num_worlds,) + (1,) * proto_array.ndim
+    block = np.tile(proto_array, tile_shape).reshape((num_worlds * proto_array.shape[0], *proto_array.shape[1:]))
+    return _append_numpy(values, block)
 
 
 class _HomogeneousBodyShapes:
@@ -284,6 +358,14 @@ def _custom_attribute_defaults_match(lhs: Any, rhs: Any) -> bool:
         return bool(defaults_match)
     except (ValueError, TypeError):
         return False
+
+
+def _load_visual_shapes_for_physics() -> bool:
+    """Return whether the Newton physics builder should import visual-only shapes."""
+    override = os.environ.get("ISAACLAB_NEWTON_LOAD_VISUAL_SHAPES")
+    if override is not None:
+        return override.strip().lower() not in {"0", "false", "no", "off"}
+    return not getattr(NewtonManager, "_clone_physics_only", False)
 
 
 def _can_bulk_replicate_homogeneous(proto: ModelBuilder, quaternions: torch.Tensor) -> bool:
@@ -545,17 +627,6 @@ def _bulk_add_homogeneous_worlds(
         builder.joint_parent = _append_numpy(builder.joint_parent, joint_parent_block.reshape(-1))
         builder.joint_child = _append_numpy(builder.joint_child, joint_child_block.reshape(-1))
 
-        # Keep builder-side lookup dictionaries valid for callbacks that inspect
-        # the builder before finalization. Finalization itself uses the flat arrays.
-        for env_index in range(num_worlds):
-            joint_base = int(joint_offsets[env_index])
-            for local_joint_idx, (parent, child) in enumerate(
-                zip(joint_parent_block[env_index], joint_child_block[env_index], strict=True)
-            ):
-                new_joint_idx = joint_base + local_joint_idx
-                builder.joint_parents.setdefault(int(child), []).append((int(parent), new_joint_idx))
-                builder.joint_children.setdefault(int(parent), []).append((int(child), new_joint_idx))
-
         builder.joint_q_start.extend(
             (coord_offsets[:, None] + np.asarray(proto.joint_q_start, dtype=np.int32)[None, :]).reshape(-1).tolist()
         )
@@ -588,17 +659,30 @@ def _bulk_add_homogeneous_worlds(
         pair_block = np.tile(proto_pairs, (num_worlds, 1, 1)) + shape_offsets[:, None, None]
         builder.shape_collision_filter_pairs.extend(map(tuple, pair_block.reshape((-1, 2)).tolist()))
 
-    for world_idx in range(start_world_idx, start_world_idx + num_worlds):
-        builder.body_world.extend([world_idx] * proto.body_count)
-        builder.shape_world.extend([world_idx] * proto.shape_count)
-        builder.joint_world.extend([world_idx] * proto.joint_count)
-        builder.articulation_world.extend([world_idx] * proto.articulation_count)
+    world_ids = np.arange(start_world_idx, start_world_idx + num_worlds, dtype=np.int32)
+    if proto.body_count:
+        builder.body_world.extend(np.repeat(world_ids, proto.body_count).tolist())
+    if proto.shape_count:
+        builder.shape_world.extend(np.repeat(world_ids, proto.shape_count).tolist())
+    if proto.joint_count:
+        builder.joint_world.extend(np.repeat(world_ids, proto.joint_count).tolist())
+    if proto.articulation_count:
+        builder.articulation_world.extend(np.repeat(world_ids, proto.articulation_count).tolist())
 
     for label_attr in ("articulation_label", "body_label", "joint_label", "shape_label"):
         getattr(builder, label_attr).extend(getattr(proto, label_attr) * num_worlds)
 
     for attr in _BULK_REPEATED_ATTRS:
-        getattr(builder, attr).extend(getattr(proto, attr) * num_worlds)
+        proto_values = getattr(proto, attr)
+        dtype = _BULK_NUMPY_REPEATED_ATTR_DTYPES.get(attr)
+        if dtype is None:
+            getattr(builder, attr).extend(proto_values * num_worlds)
+        else:
+            setattr(
+                builder,
+                attr,
+                _append_repeated_numpy(getattr(builder, attr), proto_values, num_worlds, dtype),
+            )
 
     builder._isaaclab_newton_homogeneous_clone = {
         "start_body_idx": start_body_idx,
@@ -701,10 +785,13 @@ def _build_newton_builder_from_mapping(
 
     schema_resolvers = [SchemaResolverNewton(), SchemaResolverPhysx()]
 
+    load_visual_shapes = _load_visual_shapes_for_physics()
+
     builder = NewtonManager.create_builder(up_axis=up_axis)
     stage_info = builder.add_usd(
         stage,
         ignore_paths=["/World/envs", *sources],
+        load_visual_shapes=load_visual_shapes,
         schema_resolvers=schema_resolvers,
     )
 
@@ -718,12 +805,12 @@ def _build_newton_builder_from_mapping(
         p.add_usd(
             stage,
             root_path=src_path,
-            load_visual_shapes=True,
+            load_visual_shapes=load_visual_shapes,
             skip_mesh_approximation=True,
             schema_resolvers=schema_resolvers,
         )
         if simplify_meshes:
-            p.approximate_meshes("convex_hull", keep_visual_shapes=True)
+            p.approximate_meshes("convex_hull", keep_visual_shapes=load_visual_shapes)
         protos[src_path] = p
 
     # Inject registered sites into prototypes (and global sites into main builder)
