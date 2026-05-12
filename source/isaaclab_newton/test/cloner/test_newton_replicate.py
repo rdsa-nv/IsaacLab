@@ -9,10 +9,12 @@ import pytest
 import torch
 import warp as wp
 from newton import Model, ModelBuilder
+from isaaclab.physics.physics_manager import PhysicsManager
 from isaaclab_newton.cloner.newton_replicate import (
     _bulk_add_homogeneous_worlds,
     _can_bulk_replicate_homogeneous,
     _is_homogeneous_clone_mapping,
+    _load_visual_shapes_for_physics,
     _rename_builder_labels,
     _should_rename_builder_labels,
 )
@@ -26,8 +28,47 @@ def _as_list(value):
 @pytest.fixture(autouse=True)
 def restore_clone_physics_only():
     prev = NewtonManager._clone_physics_only
+    prev_sim = PhysicsManager._sim
     yield
     NewtonManager._clone_physics_only = prev
+    PhysicsManager._sim = prev_sim
+
+
+class _SceneDataRequirements:
+    def __init__(self, requires_newton_model: bool):
+        self.requires_newton_model = requires_newton_model
+
+
+class _SimulationContextStub:
+    def __init__(self, requires_newton_model: bool):
+        self._requirements = _SceneDataRequirements(requires_newton_model)
+
+    def get_scene_data_requirements(self):
+        return self._requirements
+
+
+def test_physics_only_skips_visual_shapes_without_scene_data_consumer(monkeypatch):
+    monkeypatch.delenv("ISAACLAB_NEWTON_LOAD_VISUAL_SHAPES", raising=False)
+    NewtonManager._clone_physics_only = True
+    PhysicsManager._sim = _SimulationContextStub(requires_newton_model=False)
+
+    assert not _load_visual_shapes_for_physics()
+
+
+def test_visualizer_scene_data_consumer_loads_visual_shapes(monkeypatch):
+    monkeypatch.delenv("ISAACLAB_NEWTON_LOAD_VISUAL_SHAPES", raising=False)
+    NewtonManager._clone_physics_only = True
+    PhysicsManager._sim = _SimulationContextStub(requires_newton_model=True)
+
+    assert _load_visual_shapes_for_physics()
+
+
+def test_visual_shape_env_override_takes_precedence(monkeypatch):
+    monkeypatch.setenv("ISAACLAB_NEWTON_LOAD_VISUAL_SHAPES", "0")
+    NewtonManager._clone_physics_only = False
+    PhysicsManager._sim = _SimulationContextStub(requires_newton_model=True)
+
+    assert not _load_visual_shapes_for_physics()
 
 
 def test_homogeneous_mapping_skips_label_rename_in_physics_only():

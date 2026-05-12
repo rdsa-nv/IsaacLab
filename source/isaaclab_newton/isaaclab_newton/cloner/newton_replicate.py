@@ -18,6 +18,7 @@ from newton._src.usd.schemas import SchemaResolverNewton, SchemaResolverPhysx
 
 from pxr import Usd
 
+from isaaclab.physics.physics_manager import PhysicsManager
 from isaaclab_newton.physics import NewtonManager
 
 
@@ -365,6 +366,13 @@ def _load_visual_shapes_for_physics() -> bool:
     override = os.environ.get("ISAACLAB_NEWTON_LOAD_VISUAL_SHAPES")
     if override is not None:
         return override.strip().lower() not in {"0", "false", "no", "off"}
+    sim = PhysicsManager._sim
+    if sim is not None:
+        try:
+            if sim.get_scene_data_requirements().requires_newton_model:
+                return True
+        except Exception:
+            pass
     return not getattr(NewtonManager, "_clone_physics_only", False)
 
 
