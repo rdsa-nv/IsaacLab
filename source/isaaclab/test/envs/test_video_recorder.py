@@ -13,7 +13,13 @@ import numpy as np
 import pytest
 
 from isaaclab.envs.utils import video_recorder as _video_recorder_module
-from isaaclab.envs.utils.video_recorder import VideoRecorder, _resolve_video_backend, _sync_camera_from_visualizer
+from isaaclab.envs.utils.video_recorder import (
+    VideoRecorder,
+    _resolve_video_backend,
+    _sync_camera_from_visualizer,
+    prepare_scene_data_requirements_for_video,
+)
+from isaaclab.physics.scene_data_requirements import SceneDataRequirement
 
 pytestmark = pytest.mark.isaacsim_ci
 _BLANK_720p = np.zeros((720, 1280, 3), dtype=np.uint8)
@@ -208,6 +214,64 @@ def test_resolve_backend_raises_for_invalid_backend_source():
     scene = _make_scene([])
     with pytest.raises(ValueError, match="backend_source"):
         _resolve_video_backend(scene, backend_source="invalid")
+
+
+def _make_sim(visualizer_types=None, physics_name="NewtonPhysicsManager", current_req=None):
+    sim = MagicMock()
+    sim.resolve_visualizer_types.return_value = visualizer_types or []
+    sim.physics_manager = SimpleNamespace(__name__=physics_name)
+    sim.get_scene_data_requirements.return_value = current_req or SceneDataRequirement()
+    return sim
+
+
+def test_prepare_video_requirements_marks_newton_physics_rgb_array():
+    """Video-only Newton GL capture requests renderable Newton shapes before cloning."""
+    sim = _make_sim(physics_name="NewtonPhysicsManager")
+    cfg = SimpleNamespace(**_DEFAULT_CFG)
+
+    prepare_scene_data_requirements_for_video(sim, cfg)
+
+    sim.update_scene_data_requirements.assert_called_once_with(SceneDataRequirement(requires_newton_model=True))
+
+
+def test_prepare_video_requirements_skips_plain_headless_training():
+    """Non-video training keeps the compact physics-only Newton model path."""
+    sim = _make_sim(physics_name="NewtonPhysicsManager")
+    cfg = SimpleNamespace(**{**_DEFAULT_CFG, "env_render_mode": None})
+
+    prepare_scene_data_requirements_for_video(sim, cfg)
+
+    sim.update_scene_data_requirements.assert_not_called()
+
+
+def test_prepare_video_requirements_kit_visualizer_takes_priority():
+    """Kit-backed video does not request Newton visual shapes even with Newton physics."""
+    sim = _make_sim(visualizer_types=["kit", "newton"], physics_name="NewtonPhysicsManager")
+    cfg = SimpleNamespace(**_DEFAULT_CFG)
+
+    prepare_scene_data_requirements_for_video(sim, cfg)
+
+    sim.update_scene_data_requirements.assert_not_called()
+
+
+def test_prepare_video_requirements_renderer_source_ignores_visualizer():
+    """Renderer-source video mirrors backend resolution and ignores active visualizers."""
+    sim = _make_sim(visualizer_types=["kit"], physics_name="NewtonPhysicsManager")
+    cfg = SimpleNamespace(**{**_DEFAULT_CFG, "backend_source": "renderer"})
+
+    prepare_scene_data_requirements_for_video(sim, cfg)
+
+    sim.update_scene_data_requirements.assert_called_once_with(SceneDataRequirement(requires_newton_model=True))
+
+
+def test_prepare_video_requirements_skips_physx_kit_video():
+    """PhysX/Kit video capture does not need Newton model scene data."""
+    sim = _make_sim(physics_name="PhysxPhysicsManager")
+    cfg = SimpleNamespace(**_DEFAULT_CFG)
+
+    prepare_scene_data_requirements_for_video(sim, cfg)
+
+    sim.update_scene_data_requirements.assert_not_called()
 
 
 def _make_visualizer_cfg(visualizer_type, eye=None, lookat=None):

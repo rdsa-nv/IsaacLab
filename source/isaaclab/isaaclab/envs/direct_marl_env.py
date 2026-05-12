@@ -36,7 +36,7 @@ from .common import ActionType, AgentID, EnvStepReturn, ObsType, StateType
 from .direct_marl_env_cfg import DirectMARLEnvCfg
 from .ui import ViewportCameraController
 from .utils.spaces import sample_space, spec_to_gym_space
-from .utils.video_recorder import VideoRecorder
+from .utils.video_recorder import VideoRecorder, prepare_scene_data_requirements_for_video
 
 # import logger
 logger = logging.getLogger(__name__)
@@ -139,6 +139,13 @@ class DirectMARLEnv(gym.Env):
             )
             logger.warning(msg)
 
+        if self.cfg.video_recorder is not None:
+            self.cfg.video_recorder.env_render_mode = render_mode
+            vr = self.cfg.video_recorder
+            vr.eye = tuple(float(x) for x in self.cfg.viewer.eye)
+            vr.lookat = tuple(float(x) for x in self.cfg.viewer.lookat)
+            prepare_scene_data_requirements_for_video(self.sim, vr, self.cfg.scene)
+
         # generate scene
         with Timer("[INFO]: Time taken for scene creation", "scene_creation"):
             # set the stage context for scene creation steps which use the stage
@@ -174,10 +181,6 @@ class DirectMARLEnv(gym.Env):
         # stage and registered for the PHYSICS_READY callback before physics initialises.
         # Forward render_mode so VideoRecorder only spawns fallback cameras when --video is active.
         if self.cfg.video_recorder is not None:
-            self.cfg.video_recorder.env_render_mode = render_mode
-            vr = self.cfg.video_recorder
-            vr.eye = tuple(float(x) for x in self.cfg.viewer.eye)
-            vr.lookat = tuple(float(x) for x in self.cfg.viewer.lookat)
             self.video_recorder: VideoRecorder = self.cfg.video_recorder.class_type(self.cfg.video_recorder, self.scene)
         else:
             self.video_recorder = None

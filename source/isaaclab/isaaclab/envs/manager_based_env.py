@@ -27,7 +27,7 @@ from .common import VecEnvObs
 from .manager_based_env_cfg import ManagerBasedEnvCfg
 from .ui import ViewportCameraController
 from .utils.io_descriptors import export_articulations_data, export_scene_data
-from .utils.video_recorder import VideoRecorder
+from .utils.video_recorder import VideoRecorder, prepare_scene_data_requirements_for_video
 
 # import logger
 logger = logging.getLogger(__name__)
@@ -163,6 +163,8 @@ class ManagerBasedEnv:
 
         # allocate dictionary to store metrics
         self.extras = {}
+
+        prepare_scene_data_requirements_for_video(self.sim, self.cfg.video_recorder, self.cfg.scene)
 
         # generate scene
         with Timer("[INFO]: Time taken for scene creation", "scene_creation"):

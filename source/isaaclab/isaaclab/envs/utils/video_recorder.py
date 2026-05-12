@@ -28,12 +28,14 @@ See :mod:`video_recorder_cfg` for configuration.
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
 if TYPE_CHECKING:
     from isaaclab.scene import InteractiveScene
+    from isaaclab.sim import SimulationContext
 
     from .video_recorder_cfg import VideoRecorderCfg
 
@@ -101,6 +103,94 @@ def _resolve_video_backend(
         "PhysX or Isaac RTX renderer (Kit camera), or Newton physics / Newton Warp renderer (GL viewer). "
         "No supported backend detected; do not use --video for this setup."
     )
+
+
+def _iter_cfg_children(node) -> Iterable:
+    """Yield child config values from common config containers."""
+    if node is None or isinstance(node, (int, float, str, bool)):
+        return
+    if isinstance(node, dict):
+        yield from node.values()
+        return
+    if isinstance(node, (list, tuple)):
+        yield from node
+        return
+    try:
+        yield from vars(node).values()
+    except TypeError:
+        return
+
+
+def _collect_renderer_types_from_cfg(cfg) -> list[str]:
+    """Return renderer type names declared anywhere under ``cfg``."""
+    renderer_types: list[str] = []
+    visited: set[int] = set()
+
+    def _visit(node) -> None:
+        if node is None or isinstance(node, (int, float, str, bool)):
+            return
+        node_id = id(node)
+        if node_id in visited:
+            return
+        visited.add(node_id)
+
+        renderer_type = getattr(node, "renderer_type", None)
+        if renderer_type is not None:
+            renderer_types.append(str(renderer_type))
+
+        for child in _iter_cfg_children(node):
+            _visit(child)
+
+    _visit(cfg)
+    return renderer_types
+
+
+def _video_uses_newton_gl(
+    sim: SimulationContext,
+    cfg: VideoRecorderCfg,
+    scene_cfg=None,
+) -> bool:
+    """Predict whether ``cfg`` will resolve to the Newton GL video backend before the scene exists."""
+    if getattr(cfg, "env_render_mode", None) != "rgb_array":
+        return False
+
+    backend_source = getattr(cfg, "backend_source", "visualizer")
+    if backend_source not in ("visualizer", "renderer"):
+        raise ValueError("VideoRecorderCfg.backend_source must be either 'visualizer' or 'renderer'.")
+
+    visualizer_types: list[str] = sim.resolve_visualizer_types() if backend_source == "visualizer" else []
+    if visualizer_types:
+        for preferred in ("kit", "newton"):
+            if preferred == "kit" and preferred in visualizer_types:
+                return False
+            if preferred == "newton" and preferred in visualizer_types:
+                return True
+
+    physics_name = sim.physics_manager.__name__.lower()
+    renderer_types = _collect_renderer_types_from_cfg(scene_cfg)
+    use_kit = "physx" in physics_name or "isaac_rtx" in renderer_types
+    use_newton_gl = "newton" in physics_name or "newton_warp" in renderer_types
+
+    if use_kit:
+        return False
+    return use_newton_gl
+
+
+def prepare_scene_data_requirements_for_video(
+    sim: SimulationContext,
+    cfg: VideoRecorderCfg | None,
+    scene_cfg=None,
+) -> None:
+    """Publish scene-data requirements needed by video capture before scene cloning."""
+    if cfg is None or not _video_uses_newton_gl(sim, cfg, scene_cfg):
+        return
+
+    from isaaclab.physics.scene_data_requirements import SceneDataRequirement, aggregate_requirements
+
+    current_req = sim.get_scene_data_requirements()
+    requirements = aggregate_requirements((current_req, SceneDataRequirement(requires_newton_model=True)))
+    if requirements != current_req:
+        sim.update_scene_data_requirements(requirements)
 
 
 def _sync_camera_from_visualizer(
