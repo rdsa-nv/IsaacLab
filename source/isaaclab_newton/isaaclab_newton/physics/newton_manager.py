@@ -223,6 +223,40 @@ def _homogeneous_finalize_shortcuts(builder: ModelBuilder, skip_shape_contact_pa
             delattr(builder, "find_shape_contact_pairs")
 
 
+@contextlib.contextmanager
+def _homogeneous_custom_attribute_shortcuts():
+    """Avoid Python default-value expansion for homogeneous builders."""
+    original_build_array = ModelBuilder.CustomAttribute.build_array
+
+    def _build_array_fast(self, count: int, device=None, requires_grad: bool = False):
+        if self.dtype is str:
+            return original_build_array(self, count, device=device, requires_grad=requires_grad)
+
+        values = self.values
+        if values is None or len(values) == 0:
+            return wp.full(count, self.default, dtype=self.dtype, device=device, requires_grad=requires_grad)
+
+        if not self.is_custom_frequency and isinstance(values, dict) and len(values) == count:
+            try:
+                if all(key == idx for idx, key in enumerate(values.keys())):
+                    return wp.array(
+                        list(values.values()),
+                        dtype=self.dtype,
+                        requires_grad=requires_grad,
+                        device=device,
+                    )
+            except (TypeError, ValueError):
+                pass
+
+        return original_build_array(self, count, device=device, requires_grad=requires_grad)
+
+    ModelBuilder.CustomAttribute.build_array = _build_array_fast
+    try:
+        yield
+    finally:
+        ModelBuilder.CustomAttribute.build_array = original_build_array
+
+
 class NewtonManager(PhysicsManager):
     """Abstract Newton physics manager for Isaac Lab.
 
@@ -881,16 +915,16 @@ class NewtonManager(PhysicsManager):
             NewtonManager._pending_extended_state_attributes = set()
         homogeneous_clone_info = getattr(cls._builder, "_isaaclab_newton_homogeneous_clone", None)
         finalize_kwargs = {"skip_all_validations": True} if homogeneous_clone_info is not None else {}
-        finalize_context = (
-            _homogeneous_finalize_shortcuts(
-                cls._builder,
-                skip_shape_contact_pairs=_uses_mujoco_internal_contacts(),
-            )
-            if homogeneous_clone_info is not None
-            else contextlib.nullcontext()
-        )
         with Timer(name="newton_finalize_builder", msg="Finalize builder took:"):
-            with finalize_context:
+            with contextlib.ExitStack() as finalize_context:
+                if homogeneous_clone_info is not None:
+                    finalize_context.enter_context(
+                        _homogeneous_finalize_shortcuts(
+                            cls._builder,
+                            skip_shape_contact_pairs=_uses_mujoco_internal_contacts(),
+                        )
+                    )
+                    finalize_context.enter_context(_homogeneous_custom_attribute_shortcuts())
                 NewtonManager._model = cls._builder.finalize(device=device, **finalize_kwargs)
                 if homogeneous_clone_info is not None:
                     NewtonManager._model._isaaclab_newton_homogeneous_clone = homogeneous_clone_info

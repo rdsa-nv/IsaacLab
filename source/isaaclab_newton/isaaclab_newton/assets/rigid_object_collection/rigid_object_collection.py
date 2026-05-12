@@ -26,6 +26,7 @@ from isaaclab.utils.wrench_composer import WrenchComposer
 
 from isaaclab_newton.assets import kernels as shared_kernels
 from isaaclab_newton.physics import NewtonManager as SimulationManager
+from isaaclab_newton.sim.views.homogeneous_articulation_view import create_articulation_view
 
 from .rigid_object_collection_data import RigidObjectCollectionData
 
@@ -1127,7 +1128,7 @@ class RigidObjectCollection(BaseRigidObjectCollection):
 
         # Create a single ArticulationView matching all body types.
         # The 2nd dimension (matches per world) corresponds to the body types.
-        self._root_view = ArticulationView(
+        self._root_view = create_articulation_view(
             SimulationManager.get_model(),
             combined_pattern,
             verbose=False,

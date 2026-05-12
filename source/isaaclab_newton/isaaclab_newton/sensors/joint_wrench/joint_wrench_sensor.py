@@ -19,6 +19,7 @@ from isaaclab.sensors.joint_wrench import BaseJointWrenchSensor
 from isaaclab.sim.utils.queries import find_first_matching_prim, get_all_matching_child_prims
 
 from isaaclab_newton.physics import NewtonManager
+from isaaclab_newton.sim.views.homogeneous_articulation_view import create_articulation_view
 
 from .joint_wrench_sensor_data import JointWrenchSensorData
 from .kernels import joint_wrench_reset_kernel, joint_wrench_to_incoming_joint_frame_kernel
@@ -128,7 +129,7 @@ class JointWrenchSensor(BaseJointWrenchSensor):
         state_0 = NewtonManager.get_state_0()
 
         root_prim_path_expr = self._resolve_articulation_root_prim_path()
-        self._root_view = ArticulationView(
+        self._root_view = create_articulation_view(
             model,
             root_prim_path_expr.replace(".*", "*"),
             verbose=False,

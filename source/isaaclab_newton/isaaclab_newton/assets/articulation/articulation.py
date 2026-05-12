@@ -35,6 +35,7 @@ from isaaclab.utils.wrench_composer import WrenchComposer
 from isaaclab_newton.assets import kernels as shared_kernels
 from isaaclab_newton.assets.articulation import kernels as articulation_kernels
 from isaaclab_newton.physics import NewtonManager as SimulationManager
+from isaaclab_newton.sim.views.homogeneous_articulation_view import create_articulation_view
 
 from .articulation_data import ArticulationData
 
@@ -3284,7 +3285,7 @@ class Articulation(BaseArticulation):
             root_prim_path_expr = self.cfg.prim_path + root_prim_path_relative_to_prim_path
 
         # -- articulation
-        self._root_view = ArticulationView(
+        self._root_view = create_articulation_view(
             SimulationManager.get_model(),
             root_prim_path_expr.replace(".*", "*"),
             verbose=False,

@@ -220,6 +220,13 @@ class SensorBase(ABC):
         env_prim_path_expr = self.cfg.prim_path.rsplit("/", 1)[0]
         self._parent_prims = sim_utils.find_matching_prims(env_prim_path_expr)
         self._num_envs = len(self._parent_prims)
+        clone_plan = sim.get_clone_plan()
+        if (
+            self._num_envs == 1
+            and clone_plan is not None
+            and getattr(getattr(sim, "physics_manager", None), "_clone_physics_only", False)
+        ):
+            self._num_envs = max(self._num_envs, int(clone_plan.clone_mask.shape[1]))
         self._configure_env_buffers(self._num_envs)
 
         # Initialize debug visualization handle
