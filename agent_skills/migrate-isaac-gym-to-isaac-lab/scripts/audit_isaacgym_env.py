@@ -74,6 +74,53 @@ PATTERNS: dict[str, list[tuple[str, str, str]]] = {
             "Move to per-asset rigid/articulation properties",
         ),
     ],
+    "asset_conversion": [
+        (
+            "URDF/MJCF asset",
+            r"\burdfAsset\b|\.urdf\b|\.mjcf\b|asset_file|asset_root",
+            "Validate URDF/MJCF conversion with the active Isaac Sim runtime",
+        ),
+        (
+            "fixed joint collapse",
+            r"\bcollapseFixedJoints\b|\bcollapse_fixed_joints\b|\bmerge_fixed_joints\b",
+            "Verify fixed-joint merge support and resulting body names",
+        ),
+        (
+            "cylinder capsule replacement",
+            r"\breplace_cylinder_with_capsule\b|\breplace_cylinders_with_capsules\b",
+            "Check whether the current URDF importer supports capsule replacement",
+        ),
+        (
+            "visual attachment flip",
+            r"\bflip_visual_attachments\b|\bflipVisualAttachments\b",
+            "Check visual/collision orientation after conversion",
+        ),
+        (
+            "fixed base link",
+            r"\bfixBaseLink\b|\bfix_base_link\b|\bfix_base\b",
+            "Map fixed-base behavior and verify root articulation setup",
+        ),
+        (
+            "default drive mode",
+            r"\bdefaultDofDriveMode\b|\bdefault_dof_drive_mode\b|\bdriveMode\b",
+            "Map drive mode to actuator and converter joint-drive configs",
+        ),
+        (
+            "force sensors",
+            r"\benable_actor_dof_force_sensors\b|\bacquire_dof_force_tensor\b",
+            "Map force readings to actuator/sensor data and verify availability",
+        ),
+        (
+            "contact forces",
+            r"\bacquire_net_contact_force_tensor\b|\bcontact_forces\b|\bcontact_collection\b",
+            "Map contacts to ContactSensorCfg and verify body regex matches",
+        ),
+        (
+            "body name lookup",
+            r"\bget_asset_rigid_body_names\b|\bfind_actor_rigid_body_handle\b|\bbody_names\b",
+            "Resolve contact/termination bodies by names after conversion",
+        ),
+    ],
     "state_tensors": [
         ("acquire tensor", r"\bacquire_[a-z_]*tensor\s*\(", "Use asset.data buffers"),
         ("refresh tensor", r"\brefresh_[a-z_]*tensor\s*\(", "Usually unnecessary with asset.data"),
@@ -237,7 +284,8 @@ def render_markdown(root: Path, repo: Path | None, hits: list[Hit], max_hits: in
             "2. Build assets and scene setup with config-defined `Articulation`/`RigidObject` objects.",
             "3. Replace tensor acquire/refresh logic with `asset.data.*.torch` buffers.",
             "4. Port actions, observations, rewards, dones, and resets into DirectRLEnv methods.",
-            "5. Register the task and run a tiny `--num_envs` smoke test.",
+            "5. If URDF/MJCF assets are involved, run an asset conversion/spawn smoke and print joint/body names.",
+            "6. Register the task and run a tiny `--num_envs` smoke test.",
         ]
     )
     return "\n".join(lines)

@@ -41,6 +41,8 @@ Use prim paths with the environment regex, for example:
 robot_cfg = ROBOT_CFG.replace(prim_path="/World/envs/env_.*/Robot")
 ```
 
+For URDF/MJCF assets, validate conversion separately from the environment. Isaac Gym `AssetOptions` fields such as `collapse_fixed_joints`, `replace_cylinder_with_capsule`, `flip_visual_attachments`, `fix_base_link`, default drive mode, density, damping, and armature may not map one-to-one onto the active Isaac Lab converter plus Isaac Sim importer. If a converter option is source-faithful but unsupported in the current runtime, record it as a behavior gap and consider pre-converting the asset to USD with the matching importer/runtime before finishing the task port.
+
 ## Runtime Methods
 
 | IsaacGymEnvs | OmniIsaacGymEnvs | DirectRLEnv |
@@ -73,5 +75,7 @@ Current develop examples commonly use `.torch` on data fields, such as `robot.da
 - PhysX actor defaults can differ. Preserve damping, max velocities, contact offsets, solver iteration counts, and actuator limits explicitly when matching behavior matters.
 - `apply_action` is called for each simulation step under `decimation`; `_pre_physics_step` is called once per RL step.
 - If source code uses Hydra interpolation like `${....device}`, replace it with explicit values or Python config fields.
-- Keep asset import/conversion separate from environment logic. If URDF/MJCF import is not already represented as USD/config, make that a distinct migration task.
+- Keep asset import/conversion separate from environment logic. If URDF/MJCF import is not already represented as USD/config, make that a distinct migration task and do not call the migration runnable until an asset spawn smoke passes.
+- Contact and force logic is asset-name sensitive. After fixed-joint merging or importer changes, print `robot.data.joint_names`, body names, and contact sensor matches before trusting terminations, feet/knee indexing, or torque penalties.
+- IsaacGymEnvs randomization blocks can be present even when `task.randomize: False`. Preserve them as migration notes, but do not mark them implemented unless reset/interval behavior is actually ported.
 - Use `scripts/tools/find_quaternions.py --path <user_project>` and, for runtime data reads, `WARN_ON_TORCH_QUATF_ACCESS=1` when quaternion assumptions are likely to affect behavior.
