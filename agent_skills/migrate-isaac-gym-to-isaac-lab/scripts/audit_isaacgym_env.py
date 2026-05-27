@@ -1,0 +1,284 @@
+#!/usr/bin/env python3
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+"""Audit Isaac Gym style environment code before porting to Isaac Lab."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+from collections import Counter, defaultdict
+from dataclasses import asdict, dataclass
+from pathlib import Path
+
+SKIP_DIRS = {
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "logs",
+    "outputs",
+    "runs",
+    "wandb",
+}
+
+TEXT_SUFFIXES = {".py", ".yaml", ".yml", ".toml", ".json", ".cfg", ".txt", ".md", ".rst"}
+
+
+PATTERNS: dict[str, list[tuple[str, str, str]]] = {
+    "source_family": [
+        (
+            "Isaac Gym import",
+            r"\b(from|import)\s+isaacgym\b|\bgymapi\b|\bgymtorch\b|\bgymutil\b",
+            "Isaac Gym API usage",
+        ),
+        ("IsaacGymEnvs VecTask", r"\bVecTask\b|isaacgymenvs", "Likely IsaacGymEnvs task"),
+        ("OmniIsaacGymEnvs RLTask", r"\bRLTask\b|omniisaacgymenvs", "Likely OmniIsaacGymEnvs task"),
+        ("Omni views", r"\bArticulationView\b|\bRigidPrimView\b", "OmniIsaacGymEnvs view classes"),
+    ],
+    "config": [
+        ("numEnvs", r"\bnumEnvs\b", "Map to InteractiveSceneCfg(num_envs=...)"),
+        ("envSpacing", r"\benvSpacing\b", "Map to InteractiveSceneCfg(env_spacing=...)"),
+        ("controlFrequencyInv", r"\bcontrolFrequencyInv\b", "Map to DirectRLEnvCfg.decimation"),
+        ("clipObservations", r"\bclipObservations\b", "Move to RL config clip_observations"),
+        ("clipActions", r"\bclipActions\b", "Move to RL config clip_actions"),
+        ("substeps", r"\bsubsteps\b", "Fold into sim dt and decimation"),
+        (
+            "max episode length",
+            r"\b(maxEpisodeLength|max_episode_length|episodeLength)\b",
+            "Convert step count to episode_length_s",
+        ),
+    ],
+    "scene_assets": [
+        ("create_sim", r"\bcreate_sim\s*\(", "Replace with DirectRLEnv._setup_scene"),
+        ("create env loop", r"\bcreate_env\s*\(|\b_create_envs\s*\(", "Replace with scene.clone_environments"),
+        ("create actor", r"\bcreate_actor\s*\(", "Replace with Articulation/RigidObject configs"),
+        ("load asset", r"\bload_asset\s*\(", "Replace with UsdFileCfg/UrdfFileCfg asset configs"),
+        (
+            "ground plane",
+            r"\badd_ground\b|\bcreate_ground_plane\b|_create_ground_plane",
+            "Use spawn_ground_plane or TerrainImporterCfg",
+        ),
+        (
+            "actor properties",
+            r"\bset_actor_rigid_body_properties\b|\bset_asset_rigid_shape_properties\b",
+            "Move to per-asset rigid/articulation properties",
+        ),
+    ],
+    "state_tensors": [
+        ("acquire tensor", r"\bacquire_[a-z_]*tensor\s*\(", "Use asset.data buffers"),
+        ("refresh tensor", r"\brefresh_[a-z_]*tensor\s*\(", "Usually unnecessary with asset.data"),
+        ("gymtorch wrap", r"\bgymtorch\.(wrap_tensor|unwrap_tensor)\b", "Use native tensor buffers"),
+        ("set indexed tensor", r"\bset_[a-z_]*tensor_indexed\s*\(", "Use write_*_to_sim_index methods"),
+        ("dof terminology", r"\bdof(_|s|\b)|DOF", "Map DOF concepts to joint names/ids"),
+    ],
+    "task_logic": [
+        ("pre physics", r"\bpre_physics_step\s*\(", "Split into _pre_physics_step and _apply_action"),
+        ("post physics", r"\bpost_physics_step\s*\(", "Usually base class flow in Isaac Lab"),
+        (
+            "compute observations",
+            r"\bcompute_observations\s*\(|\bget_observations\s*\(",
+            "Map to _get_observations returning {'policy': obs}",
+        ),
+        ("compute rewards", r"\bcompute_reward\s*\(|\bcalculate_metrics\s*\(", "Map to _get_rewards"),
+        ("reset idx", r"\breset_idx\s*\(", "Map to _reset_idx"),
+        ("done logic", r"\bis_done\s*\(|\breset_buf\b|\bprogress_buf\b", "Map to _get_dones and episode_length_buf"),
+        ("post reset", r"\bpost_reset\s*\(", "Move to __init__ or _reset_idx"),
+    ],
+    "behavior_risks": [
+        (
+            "quaternion slicing",
+            r"\bquat|orientation|rotation",
+            "Check quaternion convention; Isaac Lab develop expects XYZW",
+        ),
+        (
+            "manual indices",
+            r"\b(dof|joint|body)_(idx|indices|ids)\b|\bget_dof_index\b",
+            "Resolve by names in Isaac Lab",
+        ),
+        ("randomization", r"\brandomi[sz]e|domain_randomization|dr_random", "Port to events or _reset_idx first"),
+        ("camera", r"\bcamera|Camera|enableCameraSensors|enable_cameras", "Use camera configs and --enable_cameras"),
+    ],
+}
+
+
+@dataclass
+class Hit:
+    file: str
+    line: int
+    category: str
+    name: str
+    hint: str
+    text: str
+
+
+def iter_text_files(root: Path) -> list[Path]:
+    files: list[Path] = []
+    for path in root.rglob("*"):
+        if any(part in SKIP_DIRS for part in path.parts):
+            continue
+        if path.is_file() and path.suffix in TEXT_SUFFIXES:
+            files.append(path)
+    return sorted(files)
+
+
+def scan(root: Path) -> list[Hit]:
+    compiled = {
+        category: [(name, re.compile(pattern), hint) for name, pattern, hint in items]
+        for category, items in PATTERNS.items()
+    }
+    hits: list[Hit] = []
+    for file_path in iter_text_files(root):
+        try:
+            text = file_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        rel = str(file_path.relative_to(root))
+        for line_no, line in enumerate(text.splitlines(), start=1):
+            for category, items in compiled.items():
+                for name, pattern, hint in items:
+                    if pattern.search(line):
+                        hits.append(
+                            Hit(
+                                file=rel,
+                                line=line_no,
+                                category=category,
+                                name=name,
+                                hint=hint,
+                                text=line.strip()[:180],
+                            )
+                        )
+    return hits
+
+
+def classify(hits: list[Hit]) -> str:
+    names = Counter(hit.name for hit in hits)
+    if names["OmniIsaacGymEnvs RLTask"] or names["Omni views"]:
+        return "OmniIsaacGymEnvs"
+    if names["IsaacGymEnvs VecTask"]:
+        return "IsaacGymEnvs"
+    if names["Isaac Gym import"]:
+        return "Raw Isaac Gym Preview"
+    return "Unknown or already partially migrated"
+
+
+def suggested_workflow(profile: str, hits: list[Hit]) -> str:
+    names = Counter(hit.name for hit in hits)
+    if (
+        names["compute rewards"]
+        or names["compute observations"]
+        or names["pre physics"]
+        or profile != "Unknown or already partially migrated"
+    ):
+        return "DirectRLEnv"
+    return "Inspect manually; DirectRLEnv is still the default for close Isaac Gym ports."
+
+
+def render_markdown(root: Path, repo: Path | None, hits: list[Hit], max_hits: int) -> str:
+    profile = classify(hits)
+    workflow = suggested_workflow(profile, hits)
+    by_category = Counter(hit.category for hit in hits)
+    by_file = Counter(hit.file for hit in hits)
+    by_hint: dict[str, set[str]] = defaultdict(set)
+    for hit in hits:
+        by_hint[hit.hint].add(hit.name)
+
+    lines = [
+        "# Isaac Gym Migration Audit",
+        "",
+        f"- Source root: `{root}`",
+        f"- Isaac Lab checkout: `{repo}`" if repo else "- Isaac Lab checkout: not provided",
+        f"- Source profile: **{profile}**",
+        f"- Suggested first target: **{workflow}**",
+        f"- Total hits: **{len(hits)}**",
+        "",
+        "## Category Counts",
+        "",
+    ]
+    if by_category:
+        for category, count in sorted(by_category.items()):
+            lines.append(f"- `{category}`: {count}")
+    else:
+        lines.append("- No Isaac Gym migration patterns found.")
+
+    lines.extend(["", "## Highest Signal Files", ""])
+    for file_name, count in by_file.most_common(15):
+        lines.append(f"- `{file_name}`: {count} hits")
+
+    lines.extend(["", "## Suggested Migration Tasks", ""])
+    if by_hint:
+        for hint in sorted(by_hint):
+            names = ", ".join(sorted(by_hint[hint]))
+            lines.append(f"- {hint} (`{names}`)")
+    else:
+        lines.append("- Inspect source manually; this audit did not find known patterns.")
+
+    lines.extend(["", "## Detailed Hits", ""])
+    for hit in hits[:max_hits]:
+        lines.append(f"- `{hit.file}:{hit.line}` [{hit.category}/{hit.name}] {hit.text}")
+    if len(hits) > max_hits:
+        lines.append(f"- ... truncated {len(hits) - max_hits} additional hits; rerun with `--max-hits {len(hits)}`.")
+
+    lines.extend(
+        [
+            "",
+            "## Next Steps",
+            "",
+            "1. Port config fields into an Isaac Lab configclass.",
+            "2. Build assets and scene setup with config-defined `Articulation`/`RigidObject` objects.",
+            "3. Replace tensor acquire/refresh logic with `asset.data.*.torch` buffers.",
+            "4. Port actions, observations, rewards, dones, and resets into DirectRLEnv methods.",
+            "5. Register the task and run a tiny `--num_envs` smoke test.",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "root", type=Path, help="Isaac Gym, IsaacGymEnvs, or OmniIsaacGymEnvs environment root to scan."
+    )
+    parser.add_argument("--repo", type=Path, default=None, help="Optional Isaac Lab checkout path for report context.")
+    parser.add_argument("--json", action="store_true", help="Emit JSON instead of Markdown.")
+    parser.add_argument(
+        "--max-hits", type=int, default=200, help="Maximum detailed hits to include in Markdown output."
+    )
+    args = parser.parse_args()
+
+    root = args.root.expanduser().resolve()
+    if not root.exists():
+        parser.error(f"root does not exist: {root}")
+    if not root.is_dir():
+        parser.error(f"root must be a directory: {root}")
+
+    repo = args.repo.expanduser().resolve() if args.repo else None
+    hits = scan(root)
+
+    if args.json:
+        payload = {
+            "root": str(root),
+            "repo": str(repo) if repo else None,
+            "profile": classify(hits),
+            "suggested_workflow": suggested_workflow(classify(hits), hits),
+            "category_counts": dict(Counter(hit.category for hit in hits)),
+            "file_counts": dict(Counter(hit.file for hit in hits)),
+            "hits": [asdict(hit) for hit in hits],
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        print(render_markdown(root, repo, hits, args.max_hits))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,9 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+interface:
+  display_name: "Isaac Gym to Lab Migration"
+  short_description: "Port Isaac Gym envs to Isaac Lab"
+  default_prompt: "Use $migrate-isaac-gym-to-isaac-lab to port this Isaac Gym environment to Isaac Lab develop."
