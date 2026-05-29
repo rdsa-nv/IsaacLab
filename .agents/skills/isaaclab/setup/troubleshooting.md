@@ -14,16 +14,31 @@ Current develop requires Python 3.12. If `./isaaclab.sh --help` fails with
 `ModuleNotFoundError: tomllib` or a Python-version error, the wrapper fell back
 to an old system Python.
 
-For a fresh kitless setup, fix it with `uv` directly:
+For a fresh kitless setup, create or activate a Python 3.12 `uv` env first,
+then let the wrapper install Isaac Lab:
 
 ```bash
 uv python install 3.12
 uv venv --python 3.12 --seed env_isaaclab
 source env_isaaclab/bin/activate
 uv pip install --upgrade pip
-uv pip install -e ".[newton,rl]"
+./isaaclab.sh -i newton,'rl[rsl-rl]'
 ./isaaclab.sh --help
 ```
+
+## Root Editable Install Failure
+
+If `uv pip install -e .` or `uv pip install -e ".[newton,rl]"` fails with
+`Multiple top-level packages discovered in a flat-layout`, the wrong package
+target was installed. Recover with:
+
+```bash
+source env_isaaclab/bin/activate
+./isaaclab.sh -i newton,'rl[rsl-rl]'
+```
+
+The wrapper installs the editable subpackages under `source/` directly and
+avoids root package auto-discovery.
 
 ## Missing Dependencies
 

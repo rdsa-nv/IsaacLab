@@ -8,8 +8,9 @@ Start with commands that do not launch simulation:
 ./isaaclab.sh -p -c "import isaaclab; print(isaaclab.__version__)"
 ```
 
-Run these only after a Python 3.12 environment is active. On a fresh checkout,
-follow `setup/fresh-install.md` first.
+Run these only after a Python 3.12 environment is active and the wrapper
+install has completed. On a fresh checkout, follow `setup/fresh-install.md`
+first.
 
 Check packages and task registration with the repo interpreter:
 

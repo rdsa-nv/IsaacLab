@@ -22,17 +22,32 @@ uv python install 3.12
 uv venv --python 3.12 --seed env_isaaclab
 source env_isaaclab/bin/activate
 uv pip install --upgrade pip
-uv pip install -e ".[newton,rl]"
+./isaaclab.sh -i newton,'rl[rsl-rl]'
 ```
 
-This installs the source checkout in editable mode with:
+This creates a Python 3.12 `uv` environment, then lets `./isaaclab.sh -i`
+install the source subpackages in editable mode with:
 - Newton physics packages
 - Newton visualizer extras
 - RSL-RL through `isaaclab-rl[rsl-rl]`
 - no Isaac Sim pip package
 
-The root `pyproject.toml` already defines the NVIDIA and PyTorch uv indexes.
-If `uv pip` resolution fails, check the `[tool.uv]`, `[tool.uv.sources]`, and
+If `env_isaaclab` already exists, do not recreate it unless the user asks. Use
+the existing environment:
+
+```bash
+source env_isaaclab/bin/activate
+uv pip install --upgrade pip
+./isaaclab.sh -i newton,'rl[rsl-rl]'
+```
+
+Do not run `uv pip install -e .` or `uv pip install -e ".[newton,rl]"` from the
+repo root. The root `pyproject.toml` is a development/meta project, not the
+editable package target; installing it can fail with setuptools flat-layout
+package discovery errors. The wrapper uses `uv pip` internally, with the active
+venv selected, and installs `source/isaaclab_*` packages directly.
+
+If resolution fails, check the `[tool.uv]`, `[tool.uv.sources]`, and
 `[tool.uv.pip]` sections before adding ad hoc index flags.
 
 ## Verify
@@ -49,9 +64,9 @@ After activation and install:
   presets=newton_mjwarp --viz newton
 ```
 
-Use `./isaaclab.sh -i newton,'rl[rsl-rl]'` only when the repo CLI is already
-usable from an active Python 3.12 environment. For a truly fresh setup, prefer
-the explicit `uv pip install -e ".[newton,rl]"` flow above.
+Do not inspect install internals or alternate docs unless the command fails.
+For setup requests, run the default flow first, then troubleshoot from the
+actual error.
 
 ## When Not To Use This Default
 
