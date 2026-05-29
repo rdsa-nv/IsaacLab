@@ -5,5 +5,5 @@
 
 interface:
   display_name: "Isaac Gym to Lab Migration"
-  short_description: "Port Isaac Gym envs to Isaac Lab"
-  default_prompt: "Use $migrate-isaac-gym-to-isaac-lab to port this Isaac Gym environment to Isaac Lab develop."
+  short_description: "Port Isaac Gym envs to Isaac Lab workflows"
+  default_prompt: "Use $migrate-isaac-gym-to-isaac-lab to port this Isaac Gym environment to Isaac Lab develop, including Direct, manager-based, or Newton/MJWarp targets."

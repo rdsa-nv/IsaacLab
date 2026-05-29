@@ -22,6 +22,7 @@ Use this as a migration checklist after reading the user's source and the curren
 | max episode length in steps | `episode_length_s = dt * decimation * steps` |
 | `clipObservations`, `clipActions` | RL library config, not task config |
 | global PhysX actor properties | Per-asset `RigidBodyPropertiesCfg`, `ArticulationRootPropertiesCfg`, and actuator configs |
+| requested Newton backend | `NewtonCfg(solver_cfg=MJWarpSolverCfg(...))`, usually behind a `PresetCfg` field named `newton_mjwarp` |
 
 ## Scene And Assets
 
@@ -55,6 +56,17 @@ For URDF/MJCF assets, validate conversion separately from the environment. Isaac
 | custom done/reset buffers | `is_done` | `_get_dones() -> (terminated, time_out)` |
 | `post_physics_step` | `post_reset` | Usually base class flow plus `__init__` or `_reset_idx` |
 
+For ManagerBasedRLEnv, map the same old methods into config sections instead of environment overrides:
+
+| Old pattern | Manager-based target |
+| --- | --- |
+| `pre_physics_step(actions)` | `ActionsCfg` term, usually `JointEffortActionCfg`, `JointPositionActionCfg`, or a custom `ActionTerm` |
+| `compute_observations` | ordered `ObservationTermCfg`s inside `ObservationsCfg.PolicyCfg` |
+| `compute_reward` | one or more `RewardTermCfg`s; use `ManagerTermBase` for stateful terms |
+| `reset_idx` and randomization | reset/interval `EventTermCfg`s |
+| `reset_buf` failure logic | `TerminationTermCfg` entries |
+| episode length reset | `TerminationTermCfg(func=time_out, time_out=True)` |
+
 ## Tensor And State APIs
 
 | Isaac Gym Preview | Isaac Lab develop |
@@ -75,10 +87,12 @@ Current develop examples commonly use `.torch` on data fields, such as `robot.da
 - Isaac Gym Preview joint ordering may differ from Isaac Lab/Isaac Sim. Resolve by joint names.
 - PhysX actor defaults can differ. Preserve damping, max velocities, contact offsets, solver iteration counts, and actuator limits explicitly when matching behavior matters.
 - `apply_action` is called for each simulation step under `decimation`; `_pre_physics_step` is called once per RL step.
+- In ManagerBasedRLEnv, action terms are applied by the action manager; preserve Isaac Gym action order with explicit `joint_names` and `preserve_order=True` when action vector compatibility matters.
 - If source code uses Hydra interpolation like `${....device}`, replace it with explicit values or Python config fields.
 - Keep asset import/conversion separate from environment logic. If URDF/MJCF import is not already represented as USD/config, make that a distinct migration task and do not call the migration runnable until an asset spawn smoke passes.
 - Contact and force logic is asset-name sensitive. After fixed-joint merging or importer changes, print `robot.data.joint_names`, body names, and contact sensor matches before trusting terminations, feet/knee indexing, or torque penalties.
 - Isaac Gym asset force sensors usually produce 6D force/torque wrenches. `ContactSensorCfg` net contact force is not automatically equivalent, so keep observation dimensions honest and mark any padded/missing torque channels.
 - Converted assets may have default joint positions outside their own limits if the source relied on reset-time clamping. Put valid source-equivalent defaults in the asset config before runtime smoke tests.
+- Newton/MJWarp has its own contact and solver parameters (`njmax`, `nconmax`, `cone`, `impratio`, `integrator`, `num_substeps`). A task that imports under PhysX may still need tuning or sensor substitutions before it is Newton-compatible.
 - IsaacGymEnvs randomization blocks can be present even when `task.randomize: False`. Preserve them as migration notes, but do not mark them implemented unless reset/interval behavior is actually ported.
 - Use `scripts/tools/find_quaternions.py --path <user_project>` and, for runtime data reads, `WARN_ON_TORCH_QUATF_ACCESS=1` when quaternion assumptions are likely to affect behavior.

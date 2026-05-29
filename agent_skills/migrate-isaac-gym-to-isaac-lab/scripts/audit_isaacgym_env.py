@@ -33,6 +33,22 @@ SKIP_DIRS = {
 
 TEXT_SUFFIXES = {".py", ".yaml", ".yml", ".toml", ".json", ".cfg", ".txt", ".md", ".rst"}
 
+MANAGER_NEWTON_HINTS = {
+    "Map to DirectRLEnvCfg.decimation": "Map to `ManagerBasedRLEnvCfg.decimation`",
+    "Replace with DirectRLEnv._setup_scene": "Map scene creation to `InteractiveSceneCfg` assets and sensors",
+    "Replace with scene.clone_environments": "Replace manual env loops with `InteractiveSceneCfg` cloning",
+    "Split into _pre_physics_step and _apply_action": "Map action application to `ActionsCfg` or a custom `ActionTerm`",
+    "Map to _get_observations returning {'policy': obs}": (
+        "Map observations to ordered `ObservationTermCfg`s in `ObservationsCfg.PolicyCfg`"
+    ),
+    "Map to _get_rewards": "Map rewards to `RewardTermCfg`s; use `ManagerTermBase` for stateful source math",
+    "Map to _reset_idx": "Map resets and reset randomization to reset-mode `EventTermCfg`s",
+    "Map to _get_dones and episode_length_buf": "Map failures to `TerminationTermCfg`s and timeouts to `time_out=True`",
+    "Port to events or _reset_idx first": "Port randomization to reset/interval `EventTermCfg`s first",
+    "Use write_*_to_sim_index methods": "Use built-in reset events, or write_* methods inside custom `EventTermCfg`s",
+    "Usually base class flow in Isaac Lab": "Usually handled by manager execution order, events, or custom MDP terms",
+}
+
 
 PATTERNS: dict[str, list[tuple[str, str, str]]] = {
     "source_family": [
@@ -218,7 +234,14 @@ def classify(hits: list[Hit]) -> str:
     return "Unknown or already partially migrated"
 
 
-def suggested_workflow(profile: str, hits: list[Hit]) -> str:
+def suggested_workflow(profile: str, hits: list[Hit], target_workflow: str = "auto") -> str:
+    if target_workflow == "direct":
+        return "DirectRLEnv"
+    if target_workflow == "manager":
+        return "ManagerBasedRLEnv"
+    if target_workflow == "manager-newton":
+        return "ManagerBasedRLEnv with Newton/MJWarp"
+
     names = Counter(hit.name for hit in hits)
     if (
         names["compute rewards"]
@@ -230,9 +253,9 @@ def suggested_workflow(profile: str, hits: list[Hit]) -> str:
     return "Inspect manually; DirectRLEnv is still the default for close Isaac Gym ports."
 
 
-def render_markdown(root: Path, repo: Path | None, hits: list[Hit], max_hits: int) -> str:
+def render_markdown(root: Path, repo: Path | None, hits: list[Hit], max_hits: int, target_workflow: str) -> str:
     profile = classify(hits)
-    workflow = suggested_workflow(profile, hits)
+    workflow = suggested_workflow(profile, hits, target_workflow)
     by_category = Counter(hit.category for hit in hits)
     by_file = Counter(hit.file for hit in hits)
     by_hint: dict[str, set[str]] = defaultdict(set)
@@ -263,8 +286,11 @@ def render_markdown(root: Path, repo: Path | None, hits: list[Hit], max_hits: in
 
     lines.extend(["", "## Suggested Migration Tasks", ""])
     if by_hint:
-        for hint in sorted(by_hint):
-            names = ", ".join(sorted(by_hint[hint]))
+        for source_hint in sorted(by_hint):
+            hint = source_hint
+            if target_workflow == "manager-newton":
+                hint = MANAGER_NEWTON_HINTS.get(hint, hint)
+            names = ", ".join(sorted(by_hint[source_hint]))
             lines.append(f"- {hint} (`{names}`)")
     else:
         lines.append("- Inspect source manually; this audit did not find known patterns.")
@@ -275,19 +301,45 @@ def render_markdown(root: Path, repo: Path | None, hits: list[Hit], max_hits: in
     if len(hits) > max_hits:
         lines.append(f"- ... truncated {len(hits) - max_hits} additional hits; rerun with `--max-hits {len(hits)}`.")
 
-    lines.extend(
-        [
-            "",
-            "## Next Steps",
-            "",
-            "1. Port config fields into an Isaac Lab configclass.",
-            "2. Build assets and scene setup with config-defined `Articulation`/`RigidObject` objects.",
-            "3. Replace tensor acquire/refresh logic with `asset.data.*.torch` buffers.",
-            "4. Port actions, observations, rewards, dones, and resets into DirectRLEnv methods.",
-            "5. If URDF/MJCF assets are involved, run an asset conversion/spawn smoke and print joint/body names.",
-            "6. Register the task and run a tiny `--num_envs` smoke test.",
-        ]
-    )
+    if target_workflow == "manager-newton":
+        lines.extend(
+            [
+                "",
+                "## Next Steps",
+                "",
+                "1. Port config fields into a `ManagerBasedRLEnvCfg` configclass.",
+                "2. Build assets and scene setup with config-defined `Articulation`/`RigidObject` objects.",
+                "3. Replace tensor acquire/refresh logic with `asset.data.*.torch` buffers inside MDP terms.",
+                "4. Port actions, observations, rewards, dones, and resets into manager config sections.",
+                "5. Add or default to a Newton/MJWarp physics preset and verify assets under that backend.",
+                "6. Register the task with `entry_point=\"isaaclab.envs:ManagerBasedRLEnv\"` and run a tiny smoke.",
+                "",
+                "## Manager-Based Newton Notes",
+                "",
+                "- Split source logic into `scene`, `actions`, `observations`, `events`, `rewards`, and"
+                " `terminations` config sections.",
+                "- Add a `newton_mjwarp` physics preset with `NewtonCfg(solver_cfg=MJWarpSolverCfg(...))` or"
+                " make Newton the default if the target is Newton-only.",
+                "- Preserve observation order with ordered `ObsTerm`s and `concatenate_terms=True`.",
+                "- Use `ManagerTermBase` for source reward or observation logic that stores cross-step state.",
+                "- Run a tiny Gymnasium reset/step smoke with `scene.num_envs=4` before launching training with"
+                " `presets=newton_mjwarp`.",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "",
+                "## Next Steps",
+                "",
+                "1. Port config fields into an Isaac Lab configclass.",
+                "2. Build assets and scene setup with config-defined `Articulation`/`RigidObject` objects.",
+                "3. Replace tensor acquire/refresh logic with `asset.data.*.torch` buffers.",
+                "4. Port actions, observations, rewards, dones, and resets into DirectRLEnv methods.",
+                "5. If URDF/MJCF assets are involved, run an asset conversion/spawn smoke and print joint/body names.",
+                "6. Register the task and run a tiny `--num_envs` smoke test.",
+            ]
+        )
     return "\n".join(lines)
 
 
@@ -298,6 +350,12 @@ def main() -> int:
     )
     parser.add_argument("--repo", type=Path, default=None, help="Optional Isaac Lab checkout path for report context.")
     parser.add_argument("--json", action="store_true", help="Emit JSON instead of Markdown.")
+    parser.add_argument(
+        "--target-workflow",
+        choices=("auto", "direct", "manager", "manager-newton"),
+        default="auto",
+        help="Requested target workflow hint to include in the report.",
+    )
     parser.add_argument(
         "--max-hits", type=int, default=200, help="Maximum detailed hits to include in Markdown output."
     )
@@ -317,14 +375,15 @@ def main() -> int:
             "root": str(root),
             "repo": str(repo) if repo else None,
             "profile": classify(hits),
-            "suggested_workflow": suggested_workflow(classify(hits), hits),
+            "suggested_workflow": suggested_workflow(classify(hits), hits, args.target_workflow),
+            "target_workflow": args.target_workflow,
             "category_counts": dict(Counter(hit.category for hit in hits)),
             "file_counts": dict(Counter(hit.file for hit in hits)),
             "hits": [asdict(hit) for hit in hits],
         }
         print(json.dumps(payload, indent=2, sort_keys=True))
     else:
-        print(render_markdown(root, repo, hits, args.max_hits))
+        print(render_markdown(root, repo, hits, args.max_hits, args.target_workflow))
     return 0
 
 

@@ -1,6 +1,6 @@
 ---
 name: migrate-isaac-gym-to-isaac-lab
-description: Guide Codex through migrating Isaac Gym Preview Release, IsaacGymEnvs, and OmniIsaacGymEnvs user tasks to Isaac Lab develop. Use when a user asks to port VecTask, RLTask, gymapi/gymtorch, Hydra YAML task configs, asset creation, tensor state APIs, observation/reward/reset logic, or RL training configs into Isaac Lab DirectRLEnv or ManagerBasedRLEnv projects.
+description: Guide Codex through migrating Isaac Gym Preview Release, IsaacGymEnvs, and OmniIsaacGymEnvs user tasks to Isaac Lab develop. Use when a user asks to port VecTask, RLTask, gymapi/gymtorch, Hydra YAML task configs, asset creation, tensor state APIs, observation/reward/reset logic, or RL training configs into Isaac Lab DirectRLEnv or ManagerBasedRLEnv projects, including Newton/MJWarp backend ports.
 ---
 
 <!--
@@ -31,8 +31,9 @@ python scripts/audit_isaacgym_env.py /path/to/old_env --repo /path/to/IsaacLab
    - Raw Isaac Gym script: uses `gymapi` and actor/tensor APIs but has no RL task base class.
 4. Choose the target workflow:
    - Default to `DirectRLEnv` for IsaacGymEnvs and OmniIsaacGymEnvs ports because it is closest to hand-written reward, reset, observation, and action logic.
-   - Use `ManagerBasedRLEnv` when the user explicitly wants modular MDP terms, reusable commands/events/observations/rewards, policy deployment IO descriptors, or an existing manager-based project.
-5. Create or reuse an Isaac Lab project. For a new external project, run `./isaaclab.sh --new`, choose Direct unless there is a reason not to, then install it from the active `uv` environment:
+   - Use `ManagerBasedRLEnv` when the user explicitly wants modular MDP terms, reusable commands/events/observations/rewards, policy deployment IO descriptors, an existing manager-based project, or a Newton-first task using backend presets.
+   - Use the Newton/MJWarp backend when the user asks for Newton, kit-less validation, or `presets=newton_mjwarp`; keep PhysX parity separate unless they ask for it.
+5. Create or reuse an Isaac Lab project. For a new external project, run `./isaaclab.sh --new`, choose Direct for the default path or Manager Based when requested, then install it from the active `uv` environment:
 
 ```bash
 uv pip install -e source/<project_name>
@@ -58,6 +59,7 @@ Use the bundled references only after checking local source, or when the user on
 
 - `references/isaac-gym-api-map.md`: old-to-new API and config mapping.
 - `references/direct-env-skeleton.md`: current Direct workflow file skeletons and smoke checks.
+- `references/manager-newton-skeleton.md`: ManagerBasedRLEnv + Newton/MJWarp skeleton, MDP term split, and smoke checks.
 
 ## Porting Rules
 
@@ -79,6 +81,8 @@ Use the bundled references only after checking local source, or when the user on
 - Seed default joint positions inside valid converted limits. IsaacGymEnvs tasks often initialize joints whose range excludes zero at the nearest limit before adding reset noise; Isaac Lab may validate the configured default pose before your `_reset_idx` logic runs.
 - Preserve domain randomization parameters even when the source has `randomize: False`, but mark them as recorded rather than implemented. If enabled, port reset-time and interval randomization to Isaac Lab events or explicit `_reset_idx`/step logic.
 - Keep old Torch reward functions when possible. Port the data sources, not the math, on the first pass.
+- For ManagerBasedRLEnv ports, split the source into config-defined `scene`, `actions`, `observations`, `events`, `rewards`, and `terminations`. Preserve the source observation order by ordering `ObsTerm`s inside a concatenated policy group; use custom MDP functions for any source math that does not already exist in `isaaclab.envs.mdp`.
+- For Newton ports, expose `newton_mjwarp` through a `PresetCfg` when the task should run with Isaac Lab training scripts and CLI presets. If the task is Newton-only, make the default physics config Newton as well; if comparing to Isaac Gym/PhysX, keep a separate `physx` preset and report backend differences.
 
 ## Direct Workflow Mapping
 
@@ -100,6 +104,18 @@ self.root_pos_w = self.robot.data.root_pos_w.torch
 self.robot.write_root_pose_to_sim_index(root_pose=default_root_pose, env_ids=env_ids)
 self.robot.write_joint_position_to_sim_index(position=joint_pos, env_ids=env_ids)
 ```
+
+## Manager-Based Newton Mapping
+
+Use `references/manager-newton-skeleton.md` when the target is manager-based or Newton-first. Map old methods into manager terms:
+
+- `gym.load_asset`, actor creation, ground setup -> `InteractiveSceneCfg` assets, sensors, terrain, and lights
+- `pre_physics_step(actions)` -> an action term such as `JointEffortActionCfg`, `JointPositionActionCfg`, or a custom `ActionTerm`
+- `compute_observations` -> ordered `ObservationTermCfg`s inside `ObservationsCfg.PolicyCfg`
+- `compute_reward` -> one source-faithful custom `RewardTermCfg` first, or several weighted reward terms when the split is obvious
+- `reset_idx` and domain randomization -> reset/interval `EventTermCfg`s, using custom event functions when the Isaac Gym reset logic is not covered by built-ins
+- `is_done`/reset buffer logic -> `TerminationTermCfg`s; set `time_out=True` only for episode-length truncation
+- source tensors cached across steps, such as potentials -> a `ManagerTermBase` reward or observation class with a `reset(self, env_ids)` method
 
 ## Verification
 
