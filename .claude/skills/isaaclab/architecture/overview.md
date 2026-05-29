@@ -4,9 +4,23 @@ Isaac Lab is split into source packages under `source/`. Check versions and
 package names from each `pyproject.toml`; do not assume a previous release
 layout.
 
+## Stack
+
+Think of the current stack as:
+
+```text
+OpenUSD assets and scene data -> physics/rendering backends -> Isaac Lab robot learning workflows
+```
+
+Isaac Lab is not only an RL environment package. It is the robot learning layer
+used for RL, imitation learning, data generation, teleoperation, and related
+workflows. The core `isaaclab` package defines shared abstractions and config
+patterns; concrete backend behavior lives in backend packages such as
+`isaaclab_physx`, `isaaclab_newton`, `isaaclab_ov`, and `isaaclab_ovphysx`.
+
 Core packages on current develop include:
 
-- `source/isaaclab/` - core app, env, sim, managers, sensors, actuators
+- `source/isaaclab/` - shared app, env, sim, manager, sensor, and actuator abstractions
 - `source/isaaclab_tasks/` - built-in tasks and task utilities
 - `source/isaaclab_assets/` - robot and asset configs
 - `source/isaaclab_rl/` - RL library wrappers

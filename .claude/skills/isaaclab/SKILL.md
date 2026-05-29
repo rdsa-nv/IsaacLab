@@ -1,6 +1,6 @@
 ---
 name: isaaclab
-description: Isaac Lab robotics RL framework guidance for the IsaacLab source tree. Use when working on setup, installation verification, manager-based or direct environment design, physics and renderer presets, sensors, actuators, RL training/play workflows, CartPole examples, or troubleshooting in Isaac Lab. Always verify details against the current checkout because develop moves quickly.
+description: Isaac Lab robotics learning framework guidance for the IsaacLab source tree. Use when working on setup, installation verification, manager-based or direct environment design, physics and renderer presets, sensors, actuators, RL/IL/data-generation workflows, CartPole examples, or troubleshooting in Isaac Lab. Always verify details against the current checkout because develop moves quickly.
 ---
 
 # Isaac Lab
@@ -48,6 +48,7 @@ Prefer these live paths over copied examples:
 - Task workflows: `docs/source/overview/core-concepts/task_workflows.rst`
 - Reference architecture: `docs/source/refs/reference_architecture/`
 - RL scripts: `scripts/reinforcement_learning/`
+- IL and data-generation docs: `docs/source/overview/imitation-learning/` and `docs/source/setup/walkthrough/`
 - Built-in tasks: `source/isaaclab_tasks/isaaclab_tasks/`
 - CartPole examples: `source/isaaclab_tasks/isaaclab_tasks/manager_based/classic/cartpole/` and `source/isaaclab_tasks/isaaclab_tasks/direct/cartpole/`
 - Sensors: `source/isaaclab/isaaclab/sensors/`

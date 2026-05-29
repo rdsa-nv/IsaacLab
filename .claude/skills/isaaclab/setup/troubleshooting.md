@@ -1,5 +1,13 @@
 # Troubleshooting
 
+Start with the official troubleshooting docs:
+
+- `docs/source/refs/troubleshooting.rst`
+- `https://isaac-sim.github.io/IsaacLab/develop/source/refs/troubleshooting.html`
+
+Use this file only as a short agent checklist for issues that often come from
+the selected interpreter or checkout, not as a complete troubleshooting catalog.
+
 ## Wrong Python
 
 Current develop requires Python 3.12. If `./isaaclab.sh --help` fails with
