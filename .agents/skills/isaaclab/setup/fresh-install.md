@@ -10,6 +10,13 @@ Do not start by running `./isaaclab.sh --help` on a fresh checkout. If no
 `env_isaaclab` or active Python 3.12 env exists, the wrapper may fall back to
 system Python and fail before help is printed.
 
+Do not spend time searching for every possible environment. Do not inspect
+system `python`, `python3`, conda, uv cache directories, or unrelated venv
+names unless the default flow fails. Use this rule:
+- If `VIRTUAL_ENV` is set, use the active env.
+- Else if `env_isaaclab/bin/python` exists, activate `env_isaaclab`.
+- Else create `env_isaaclab` with `uv`.
+
 ## Default Linux Flow
 
 From the Isaac Lab repo root:
@@ -18,9 +25,21 @@ From the Isaac Lab repo root:
 # Install uv first if needed:
 # curl -LsSf https://astral.sh/uv/install.sh | sh
 
-uv python install 3.12
-uv venv --python 3.12 --seed env_isaaclab
-source env_isaaclab/bin/activate
+command -v uv >/dev/null || { echo "uv is required"; exit 1; }
+
+if [ -n "${VIRTUAL_ENV:-}" ]; then
+  echo "Using active env: $VIRTUAL_ENV"
+elif [ -x env_isaaclab/bin/python ]; then
+  source env_isaaclab/bin/activate
+  echo "Using existing env_isaaclab"
+else
+  uv python install 3.12
+  uv venv --python 3.12 --seed env_isaaclab
+  source env_isaaclab/bin/activate
+  echo "Created env_isaaclab"
+fi
+
+python --version
 uv pip install --upgrade pip
 ./isaaclab.sh -i newton,'rl[rsl-rl]'
 ```
@@ -31,15 +50,6 @@ install the source subpackages in editable mode with:
 - Newton visualizer extras
 - RSL-RL through `isaaclab-rl[rsl-rl]`
 - no Isaac Sim pip package
-
-If `env_isaaclab` already exists, do not recreate it unless the user asks. Use
-the existing environment:
-
-```bash
-source env_isaaclab/bin/activate
-uv pip install --upgrade pip
-./isaaclab.sh -i newton,'rl[rsl-rl]'
-```
 
 Do not run `uv pip install -e .` or `uv pip install -e ".[newton,rl]"` from the
 repo root. The root `pyproject.toml` is a development/meta project, not the
@@ -56,13 +66,23 @@ After activation and install:
 
 ```bash
 ./isaaclab.sh --help
-./isaaclab.sh -p -c "import sys; print(sys.version)"
+./isaaclab.sh -p .agents/skills/isaaclab/scripts/version_summary.py
 ./isaaclab.sh -p -c "import isaaclab, isaaclab_newton, isaaclab_rl; print('ok')"
-./isaaclab.sh train --rl_library rsl_rl \
-  --task Isaac-Cartpole-Direct-v0 \
-  --num_envs 16 --max_iterations 10 \
-  presets=newton_mjwarp --viz newton
 ```
+
+In the final "what you have" summary, include Python, Isaac Lab, Isaac Lab
+Newton, Newton, Warp, Isaac Sim, Kit, Torch/CUDA, RSL-RL, and GPU if detected.
+For kitless installs, Isaac Sim and Kit should normally report "not installed".
+
+After these checks pass, ask before launching a training smoke test:
+
+```text
+Imports and versions check out. Do you want me to run a 10-iteration CartPole
+Newton training smoke test now? It can take a few minutes and writes logs and
+checkpoints.
+```
+
+Only run training after the user says yes.
 
 Do not inspect install internals or alternate docs unless the command fails.
 For setup requests, run the default flow first, then troubleshoot from the

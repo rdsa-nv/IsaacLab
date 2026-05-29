@@ -15,10 +15,11 @@ Use `./isaaclab.sh` for Isaac Lab commands. For Python snippets or scripts, use
 `./isaaclab.sh -p`; do not use bare `python` unless you are inspecting a
 non-Isaac-Lab helper outside the repo.
 
-For setup/install, read only [Install](setup/fresh-install.md) first. The
-default is a Newton-focused kitless flow: create or activate a Python 3.12 `uv`
-env, then run the repo wrapper install. Do not run `./isaaclab.sh --help`
-before a Python 3.12 environment is active.
+For setup/install, read only [Install](setup/fresh-install.md) first. Do not
+do branch orientation or broad environment searches. The default is a
+Newton-focused kitless flow: create or activate a Python 3.12 `uv` env, then
+run the repo wrapper install. Do not run `./isaaclab.sh --help` before a
+Python 3.12 environment is active.
 
 Read `AGENTS.md` only before code edits, tests, commits, contribution-policy
 answers, or other tasks where repository rules matter.
@@ -51,6 +52,8 @@ the task:
 
 - Do not preserve benchmark numbers, local hardware notes, or old validation
   reports in answers. Re-run or omit them.
+- Do not run training smoke tests automatically. After install/import/version
+  checks pass, ask before launching any train or play command.
 - Treat old per-framework scripts such as
   `scripts/reinforcement_learning/rsl_rl/train.py` as compatibility wrappers.
   Prefer the unified `./isaaclab.sh train --rl_library ...` and

@@ -4,8 +4,8 @@ Start with commands that do not launch simulation:
 
 ```bash
 ./isaaclab.sh --help
-./isaaclab.sh -p -c "import sys; print(sys.version)"
-./isaaclab.sh -p -c "import isaaclab; print(isaaclab.__version__)"
+./isaaclab.sh -p .agents/skills/isaaclab/scripts/version_summary.py
+./isaaclab.sh -p -c "import isaaclab, isaaclab_newton, isaaclab_rl; print('ok')"
 ```
 
 Run these only after a Python 3.12 environment is active and the wrapper
@@ -19,11 +19,18 @@ Check packages and task registration with the repo interpreter:
 ./isaaclab.sh -p scripts/environments/list_envs.py
 ```
 
-For RL command shape, prefer the unified entrypoints:
+Do not run training smoke tests automatically. Ask first:
+
+```text
+Imports and versions check out. Do you want me to run a 10-iteration CartPole
+Newton training smoke test now? It can take a few minutes and writes logs and
+checkpoints.
+```
+
+If the user agrees, prefer the unified entrypoints:
 
 ```bash
-./isaaclab.sh train --rl_library rsl_rl --task Isaac-Cartpole-v0 --max_iterations 1
-./isaaclab.sh train --rl_library rsl_rl --task Isaac-Cartpole-Direct-v0 presets=newton_mjwarp --viz newton --max_iterations 1
+./isaaclab.sh train --rl_library rsl_rl --task Isaac-Cartpole-Direct-v0 --num_envs 16 --max_iterations 10 presets=newton_mjwarp --headless
 ./isaaclab.sh play --rl_library rsl_rl --task Isaac-Cartpole-v0 --num_envs 32 --checkpoint /path/to/model.pt
 ```
 
