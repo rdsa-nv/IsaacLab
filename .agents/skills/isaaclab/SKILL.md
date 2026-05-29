@@ -51,6 +51,7 @@ the task:
 - setup/install: [Install](setup/fresh-install.md)
 - verification: [Verify](setup/verification.md)
 - errors or broken envs: [Troubleshoot](setup/troubleshooting.md)
+- render modes/rendering modes/rendering presets: [Backends and renderers](architecture/backends.md)
 - architecture/backends/renderers: [Overview](architecture/overview.md) or
   [Backends and renderers](architecture/backends.md)
 - sensors/actuators: [Sensors and actuators](architecture/sensors-actuators.md)

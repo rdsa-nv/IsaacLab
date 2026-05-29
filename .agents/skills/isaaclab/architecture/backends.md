@@ -4,6 +4,60 @@ Isaac Lab separates task configuration from physics backends, renderers, and
 visualizers. Do not infer that a backend works for a task just because the
 package exists.
 
+## Rendering Presets Quick Answer
+
+When a user asks for "render modes" or "rendering modes", they usually mean
+camera renderer/data presets. Answer this first. Do not start by searching for
+`RenderMode`, `render_mode`, or visualizer `set_render_mode` unless the user
+explicitly asks about Gymnasium `render_mode` or a visualizer UI dropdown.
+
+Renderer selectors:
+- `renderer=default` or `renderer=isaacsim_rtx_renderer`: Isaac Sim RTX
+  renderer. This is the default camera renderer and requires Kit.
+- `renderer=newton_renderer`: Newton Warp renderer. This is kitless and is the
+  usual Newton camera-rendering option.
+- `renderer=ovrtx_renderer`: OV RTX renderer. This is kitless when paired with
+  compatible physics such as `newton_mjwarp` or `ovphysx`.
+
+Common camera data/AOV presets, when the task defines them:
+- `presets=rgb`
+- `presets=depth`
+- `presets=albedo`
+- `presets=semantic_segmentation`
+- `presets=simple_shading_constant_diffuse`
+- `presets=simple_shading_diffuse_mdl`
+- `presets=simple_shading_full_mdl`
+
+Set them with typed selectors after the normal CLI args:
+
+```bash
+./isaaclab.sh train --rl_library skrl \
+  --task Isaac-Cartpole-Camera-Presets-Direct-v0 \
+  --enable_cameras renderer=newton_renderer presets=rgb
+
+./isaaclab.sh train --rl_library skrl \
+  --task Isaac-Cartpole-Camera-Presets-Direct-v0 \
+  --enable_cameras physics=newton_mjwarp renderer=ovrtx_renderer presets=depth
+```
+
+Equivalent broadcast form:
+
+```bash
+presets=newton_mjwarp,newton_renderer,rgb
+```
+
+Availability is task-specific. The quickest authoritative check is:
+
+```bash
+./isaaclab.sh train --rl_library <library> --task <TASK> --help
+```
+
+Ground-truth source anchors:
+- renderer preset names: `source/isaaclab_tasks/isaaclab_tasks/utils/presets.py`
+- CLI selector behavior: `docs/source/features/hydra.rst`
+- tested renderer/data combinations: `source/isaaclab_tasks/test/rendering_test_utils.py`
+- Kit requirement cases: `source/isaaclab_tasks/test/test_preset_kit_decision.py`
+
 ## Physics
 
 PhysX and Newton live in separate packages:
@@ -42,6 +96,11 @@ task config supports them:
 ```bash
 ./isaaclab.sh train --rl_library skrl --task Isaac-Cartpole-Camera-Presets-Direct-v0 --enable_cameras renderer=newton_renderer presets=rgb
 ```
+
+For current camera test coverage, RTX/OVRTX paths cover `rgb`, `albedo`,
+`depth`, `semantic_segmentation`, and the `simple_shading_*` presets. The
+Newton Warp renderer coverage is narrower, commonly `rgb` and `depth`; verify
+the target task before promising a data type.
 
 ## Visualizers
 

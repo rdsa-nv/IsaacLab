@@ -67,6 +67,13 @@ Hydra overrides and typed preset tokens are passed after normal args:
 ./isaaclab.sh train --rl_library skrl --task Isaac-Cartpole-Camera-Presets-Direct-v0 --enable_cameras renderer=newton_renderer presets=rgb
 ```
 
+If the user asks about "render modes", answer in terms of renderer/data
+presets first:
+- renderer presets: `isaacsim_rtx_renderer`, `newton_renderer`, `ovrtx_renderer`
+- data presets, when defined by the task: `rgb`, `depth`, `albedo`,
+  `semantic_segmentation`, `simple_shading_constant_diffuse`,
+  `simple_shading_diffuse_mdl`, `simple_shading_full_mdl`
+
 Observation presets can change checkpoint shape. Use the same observation
 preset for play that was used for training.
 
