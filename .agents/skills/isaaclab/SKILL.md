@@ -8,18 +8,18 @@ description: Isaac Lab source-tree guidance for setup, verification, env/task wo
 ## Start Here
 
 Keep startup light. If the user only invokes `/isaaclab` without a concrete
-task, do not read files or run commands. Reply with this banner and one short
-sentence asking what they want to do:
+task, do not read files or run commands, and do not print a banner. Reply with:
 
 ```text
-+------------------------------------------------------+
-|  ___                      _             _            |
-| |_ _|___  __ _  __ _  ___| |   __ _ ___| |__         |
-|  | |/ __|/ _` |/ _` |/ __| |  / _` / __| '_ \        |
-|  | |\__ \ (_| | (_| | (__| |__ (_| \__ \ |_) |       |
-| |___|___/\__,_|\__,_|\___|____\__,_|___/_.__/        |
-|        Newton | RL | Simulation | Robots             |
-+------------------------------------------------------+
+The Isaac Lab skill is ready. What would you like to do?
+
+A few common starting points:
+- Setup / install - fresh kitless uv install, or fixing a broken env
+- Verify an existing install - imports and version checks
+- Environment/task work - build a new env or adapt a template
+- RL training / play - launch or configure training
+- Architecture questions - backends, renderers, sensors, actuators
+- Troubleshooting an error
 ```
 
 Use `./isaaclab.sh` for Isaac Lab commands. For Python snippets or scripts, use
