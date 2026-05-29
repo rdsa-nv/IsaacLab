@@ -68,14 +68,15 @@ Use the bundled references only after checking local source, or when the user on
 - Move `clipObservations` and `clipActions` into the RL config for libraries that use them.
 - Replace `create_sim`, `_create_envs`, actor-handle loops, and manual env creation with `_setup_scene`, config-defined assets, `scene.clone_environments`, and `scene.filter_collisions`.
 - Replace `gym.load_asset` and actor options with `ArticulationCfg`, `RigidObjectCfg`, `UsdFileCfg`, `UrdfFileCfg`, rigid body properties, articulation properties, and actuator configs.
-- Treat URDF/MJCF conversion as its own validation gate. Map source `gymapi.AssetOptions` fields such as `collapse_fixed_joints`, `replace_cylinder_with_capsule`, `flip_visual_attachments`, `fix_base_link`, `density`, damping, armature, and drive mode, but confirm the current Isaac Lab `UrdfFileCfg`/converter and the active Isaac Sim runtime both accept the resulting options before claiming the environment runs.
+- Treat URDF/MJCF conversion as its own validation gate. Map source `gymapi.AssetOptions` fields such as `collapse_fixed_joints`, `replace_cylinder_with_capsule`, `flip_visual_attachments`, `fix_base_link`, `density`, damping, armature, and drive mode, but confirm the current Isaac Lab `UrdfFileCfg`/`MjcfFileCfg` converter and the active Isaac Sim runtime both accept the resulting options before claiming the environment runs. For MJCF, enable or verify `isaacsim.asset.importer.mjcf`; if Isaac Lab develop forwards importer fields unsupported by the active runtime, pre-convert to USD with that runtime and record the mismatch.
 - Do not use an existing Isaac Lab example task as the migration source unless the user explicitly asks for that. Examples are useful for API shape; the source of truth for behavior is the user's Isaac Gym code, YAML, and assets.
 - Replace `acquire_*_tensor`, `refresh_*_tensor`, `gymtorch.wrap_tensor`, and `gymtorch.unwrap_tensor` with `asset.data` buffers and `write_*_to_sim_index` methods.
 - Resolve joints and bodies by name or regex (`find_joints`, `find_bodies`) instead of preserving Isaac Gym integer handle order.
 - Check quaternion order against the current checkout. Isaac Lab develop/3.0 math and data paths use `xyzw`; older Isaac Lab docs and some older code may mention `wxyz`. Do not apply a blind conversion.
 - Re-check joint ordering. Isaac Gym Preview used depth-first joint ordering; Isaac Lab/Isaac Sim use breadth-first ordering. Do not blindly reuse DOF indices.
 - Re-check body names after asset conversion. Fixed-joint merging, visual attachment flipping, and URDF importer behavior can change names used by contact sensors, force sensors, terminations, feet, knees, and base bodies.
-- Port `enable_actor_dof_force_sensors`, `acquire_dof_force_tensor`, and `acquire_net_contact_force_tensor` deliberately. Use Isaac Lab actuator effort and sensor data when available, and add `ContactSensorCfg` only after verifying the matching body regexes in a tiny runtime smoke.
+- Port `create_asset_force_sensor`, `acquire_force_sensor_tensor`, `enable_actor_dof_force_sensors`, `acquire_dof_force_tensor`, and `acquire_net_contact_force_tensor` deliberately. Isaac Gym force sensors may expose 6D force/torque wrenches; Isaac Lab `ContactSensor` net forces are typically 3D. Do not silently pad or drop torque channels without marking the behavior gap and checking whether a wrench sensor or backend-specific sensor is required.
+- Seed default joint positions inside valid converted limits. IsaacGymEnvs tasks often initialize joints whose range excludes zero at the nearest limit before adding reset noise; Isaac Lab may validate the configured default pose before your `_reset_idx` logic runs.
 - Preserve domain randomization parameters even when the source has `randomize: False`, but mark them as recorded rather than implemented. If enabled, port reset-time and interval randomization to Isaac Lab events or explicit `_reset_idx`/step logic.
 - Keep old Torch reward functions when possible. Port the data sources, not the math, on the first pass.
 
@@ -110,7 +111,9 @@ uv run python scripts/environments/list_envs.py | rg "<Task-Name>"
 uv run train --rl_library rsl_rl --task <Task-Name> --num_envs 16 --max_iterations 1 --viz none presets=physx
 ```
 
-If the task imports URDF/MJCF assets, run a conversion/spawn smoke before the full training smoke. A successful config import is not enough: verify the same Isaac Sim runtime that will run the task accepts converter fields such as `merge_fixed_joints` and `replace_cylinders_with_capsules`, then print the resolved joint and body names used by action and contact logic.
+If the task imports URDF/MJCF assets, run a conversion/spawn smoke before the full training smoke. A successful config import is not enough: verify the same Isaac Sim runtime that will run the task accepts converter fields such as `merge_fixed_joints`, `replace_cylinders_with_capsules`, and MJCF importer options, then print the resolved joint and body names used by action and contact logic.
+
+For an end-to-end migration smoke, instantiate the registered Gymnasium task with a tiny `scene.num_envs`, run `reset`, run several `step`s with zero or bounded random actions, assert observation/action/reward/done tensor shapes, and print the resolved joint/body/contact names. If the requested PhysX path is blocked by a local Isaac Sim extension mismatch, a Newton smoke is useful for task-logic validation, but label the backend difference instead of claiming PhysX parity.
 
 Use `presets=newton_mjwarp` only when the task's assets and physics choices are known to be compatible with Newton. If the user is comparing to Isaac Gym physics, validate with PhysX first unless they asked for Newton.
 

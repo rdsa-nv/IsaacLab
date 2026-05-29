@@ -107,8 +107,8 @@ PATTERNS: dict[str, list[tuple[str, str, str]]] = {
         ),
         (
             "force sensors",
-            r"\benable_actor_dof_force_sensors\b|\bacquire_dof_force_tensor\b",
-            "Map force readings to actuator/sensor data and verify availability",
+            r"\bcreate_asset_force_sensor\b|\bacquire_force_sensor_tensor\b|\benable_actor_dof_force_sensors\b|\bacquire_dof_force_tensor\b",
+            "Map force/wrench readings to actuator or sensor data and verify 3D vs 6D semantics",
         ),
         (
             "contact forces",

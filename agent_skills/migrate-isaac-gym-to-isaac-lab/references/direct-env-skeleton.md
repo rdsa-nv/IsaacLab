@@ -142,4 +142,18 @@ uv run python scripts/environments/list_envs.py | rg "Isaac-My-Task-Direct-v0"
 uv run train --rl_library rsl_rl --task Isaac-My-Task-Direct-v0 --num_envs 16 --max_iterations 1 --viz none presets=physx
 ```
 
+Also keep a tiny registered-env smoke script for migrations with custom assets or hand-ported rewards:
+
+```python
+cfg = load_cfg_from_registry("Isaac-My-Task-Direct-v0", "env_cfg_entry_point")
+cfg.scene.num_envs = 4
+env = gym.make("Isaac-My-Task-Direct-v0", cfg=cfg, render_mode=None)
+obs, _ = env.reset()
+actions = torch.zeros((4, cfg.action_space), device=env.unwrapped.device)
+obs, rew, terminated, truncated, _ = env.step(actions)
+print(obs["policy"].shape, rew.shape, terminated.shape, truncated.shape)
+print(env.unwrapped.robot.data.joint_names)
+env.close()
+```
+
 If the task is intended to be kit-less, run the same training smoke with `presets=newton_mjwarp` only after checking that all assets, sensors, contacts, and actuator assumptions are supported by the selected Newton path.

@@ -41,7 +41,7 @@ Use prim paths with the environment regex, for example:
 robot_cfg = ROBOT_CFG.replace(prim_path="/World/envs/env_.*/Robot")
 ```
 
-For URDF/MJCF assets, validate conversion separately from the environment. Isaac Gym `AssetOptions` fields such as `collapse_fixed_joints`, `replace_cylinder_with_capsule`, `flip_visual_attachments`, `fix_base_link`, default drive mode, density, damping, and armature may not map one-to-one onto the active Isaac Lab converter plus Isaac Sim importer. If a converter option is source-faithful but unsupported in the current runtime, record it as a behavior gap and consider pre-converting the asset to USD with the matching importer/runtime before finishing the task port.
+For URDF/MJCF assets, validate conversion separately from the environment. Isaac Gym `AssetOptions` fields such as `collapse_fixed_joints`, `replace_cylinder_with_capsule`, `flip_visual_attachments`, `fix_base_link`, default drive mode, density, damping, and armature may not map one-to-one onto the active Isaac Lab converter plus Isaac Sim importer. MJCF imports may also require `isaacsim.asset.importer.mjcf` to be enabled. If a converter option is source-faithful but unsupported in the current runtime, record it as a behavior gap and consider pre-converting the asset to USD with the matching importer/runtime before finishing the task port.
 
 ## Runtime Methods
 
@@ -64,6 +64,7 @@ For URDF/MJCF assets, validate conversion separately from the environment. Isaac
 | `gymtorch.wrap_tensor` / `unwrap_tensor` | Native tensor buffers exposed by assets |
 | `set_dof_state_tensor_indexed` | `write_joint_position_to_sim_index`, `write_joint_velocity_to_sim_index`, or `write_joint_state_to_sim` if available in the current checkout |
 | `set_actor_root_state_tensor_indexed` | `write_root_pose_to_sim_index`, `write_root_velocity_to_sim_index` |
+| `create_asset_force_sensor`, `acquire_force_sensor_tensor` | A verified wrench-capable sensor path, or an explicit behavior gap if only 3D net contact forces are available |
 | DOF order from asset | `robot.data.joint_names` and `find_joints(...)` |
 
 Current develop examples commonly use `.torch` on data fields, such as `robot.data.default_joint_pos.torch[env_ids]`.
@@ -77,5 +78,7 @@ Current develop examples commonly use `.torch` on data fields, such as `robot.da
 - If source code uses Hydra interpolation like `${....device}`, replace it with explicit values or Python config fields.
 - Keep asset import/conversion separate from environment logic. If URDF/MJCF import is not already represented as USD/config, make that a distinct migration task and do not call the migration runnable until an asset spawn smoke passes.
 - Contact and force logic is asset-name sensitive. After fixed-joint merging or importer changes, print `robot.data.joint_names`, body names, and contact sensor matches before trusting terminations, feet/knee indexing, or torque penalties.
+- Isaac Gym asset force sensors usually produce 6D force/torque wrenches. `ContactSensorCfg` net contact force is not automatically equivalent, so keep observation dimensions honest and mark any padded/missing torque channels.
+- Converted assets may have default joint positions outside their own limits if the source relied on reset-time clamping. Put valid source-equivalent defaults in the asset config before runtime smoke tests.
 - IsaacGymEnvs randomization blocks can be present even when `task.randomize: False`. Preserve them as migration notes, but do not mark them implemented unless reset/interval behavior is actually ported.
 - Use `scripts/tools/find_quaternions.py --path <user_project>` and, for runtime data reads, `WARN_ON_TORCH_QUATF_ACCESS=1` when quaternion assumptions are likely to affect behavior.
