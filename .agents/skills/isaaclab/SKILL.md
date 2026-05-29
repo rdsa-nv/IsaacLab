@@ -8,8 +8,19 @@ description: Isaac Lab source-tree guidance for setup, verification, env/task wo
 ## Start Here
 
 Keep startup light. If the user only invokes `/isaaclab` without a concrete
-task, do not read files or run commands. Reply briefly that the Isaac Lab skill
-is ready and ask what they want to do.
+task, do not read files or run commands. Reply with this banner and one short
+sentence asking what they want to do:
+
+```text
++------------------------------------------------------+
+|  ___                      _             _            |
+| |_ _|___  __ _  __ _  ___| |   __ _ ___| |__         |
+|  | |/ __|/ _` |/ _` |/ __| |  / _` / __| '_ \        |
+|  | |\__ \ (_| | (_| | (__| |__ (_| \__ \ |_) |       |
+| |___|___/\__,_|\__,_|\___|____\__,_|___/_.__/        |
+|        Newton | RL | Simulation | Robots             |
++------------------------------------------------------+
+```
 
 Use `./isaaclab.sh` for Isaac Lab commands. For Python snippets or scripts, use
 `./isaaclab.sh -p`; do not use bare `python` unless you are inspecting a
