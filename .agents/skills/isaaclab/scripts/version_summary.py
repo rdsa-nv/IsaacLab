@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Print a compact Isaac Lab install/version summary."""
+"""Print a compact "What you have" Isaac Lab install summary."""
 
 from __future__ import annotations
 
 import importlib
 import importlib.metadata as metadata
+import os
 import subprocess
 import sys
 
@@ -87,22 +88,32 @@ def main() -> None:
         torch_version = getattr(torch, "__version__", "available")
         cuda_available = str(torch.cuda.is_available())
 
+    env_path = os.environ.get("VIRTUAL_ENV") or sys.prefix
+    lab_version = version(dists=("isaaclab",), modules=("isaaclab",))
+    lab_newton_version = version(dists=("isaaclab-newton",), modules=("isaaclab_newton",))
+    newton_version = version(dists=("newton", "newton-physics"), modules=("newton",))
+    warp_version = version(dists=("warp-lang",), modules=("warp",))
+    mujoco_warp_version = version(dists=("mujoco-warp",), modules=("mujoco_warp",))
+    rsl_rl_version = version(dists=("rsl-rl-lib", "rsl_rl"), modules=("rsl_rl",))
+    isaac_sim_version = version(dists=("isaacsim", "isaac-sim"), modules=("isaacsim",))
+    kit = kit_version()
+
     rows = [
-        ("Python", sys.version.split()[0]),
-        ("Isaac Lab", version(dists=("isaaclab",), modules=("isaaclab",))),
-        ("Isaac Lab Newton", version(dists=("isaaclab-newton",), modules=("isaaclab_newton",))),
-        ("Newton", version(dists=("newton", "newton-physics"), modules=("newton",))),
-        ("Warp", version(dists=("warp-lang",), modules=("warp",))),
-        ("Isaac Sim", version(dists=("isaacsim", "isaac-sim"), modules=("isaacsim",))),
-        ("Kit", kit_version()),
-        ("Torch", torch_version),
-        ("CUDA available", cuda_available),
-        ("RSL-RL", version(dists=("rsl-rl-lib", "rsl_rl"), modules=("rsl_rl",))),
+        ("Env", f"{env_path} (Python {sys.version.split()[0]})"),
+        ("Isaac Lab", f"isaaclab {lab_version}; isaaclab-newton {lab_newton_version}"),
+        ("Physics", f"Newton {newton_version}; Warp {warp_version}; MuJoCo-Warp {mujoco_warp_version}"),
+        ("DL / RL", f"torch {torch_version} (CUDA {cuda_available}); rsl-rl-lib {rsl_rl_version}"),
         ("GPU", gpu_summary()),
+        ("Isaac Sim", isaac_sim_version),
+        ("Kit", kit),
     ]
-    width = max(len(label) for label, _ in rows)
+
+    print("What you have")
+    print()
+    print("| Item | Value |")
+    print("| --- | --- |")
     for label, value in rows:
-        print(f"{label:<{width}} : {value}")
+        print(f"| {label} | {value} |")
 
 
 if __name__ == "__main__":

@@ -70,9 +70,14 @@ After activation and install:
 ./isaaclab.sh -p -c "import isaaclab, isaaclab_newton, isaaclab_rl; print('ok')"
 ```
 
-In the final "what you have" summary, include Python, Isaac Lab, Isaac Lab
-Newton, Newton, Warp, Isaac Sim, Kit, Torch/CUDA, RSL-RL, and GPU if detected.
-For kitless installs, Isaac Sim and Kit should normally report "not installed".
+Use the output of `version_summary.py` as the final "What you have" block.
+Keep the grouped table shape: Env, Isaac Lab, Physics, DL / RL, GPU, Isaac
+Sim, Kit. For kitless installs, Isaac Sim and Kit should normally report "not
+installed". Do not replace this with a flat key/value dump.
+
+After the table, include a short "Using it" section with the activation command
+and copy-paste train/play examples. These are examples only; do not run training
+unless the user approves the smoke test prompt below.
 
 After these checks pass, ask before launching a training smoke test:
 

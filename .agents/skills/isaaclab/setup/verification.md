@@ -12,6 +12,11 @@ Run these only after a Python 3.12 environment is active and the wrapper
 install has completed. On a fresh checkout, follow `setup/fresh-install.md`
 first.
 
+Use the `version_summary.py` output directly for the final "What you have"
+block. Keep it as the grouped table, not a flat key/value dump.
+Then include a short "Using it" section with activation and train/play command
+examples, but do not run training unless the user approves.
+
 Check packages and task registration with the repo interpreter:
 
 ```bash
