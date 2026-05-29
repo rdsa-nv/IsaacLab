@@ -14,11 +14,14 @@ Current develop requires Python 3.12. If `./isaaclab.sh --help` fails with
 `ModuleNotFoundError: tomllib` or a Python-version error, the wrapper fell back
 to an old system Python.
 
-Fix by activating or creating the repo env:
+For a fresh kitless setup, fix it with `uv` directly:
 
 ```bash
-./isaaclab.sh -u
+uv python install 3.12
+uv venv --python 3.12 --seed env_isaaclab
 source env_isaaclab/bin/activate
+uv pip install --upgrade pip
+uv pip install -e ".[newton,rl]"
 ./isaaclab.sh --help
 ```
 

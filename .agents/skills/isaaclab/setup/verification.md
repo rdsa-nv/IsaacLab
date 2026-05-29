@@ -8,6 +8,9 @@ Start with commands that do not launch simulation:
 ./isaaclab.sh -p -c "import isaaclab; print(isaaclab.__version__)"
 ```
 
+Run these only after a Python 3.12 environment is active. On a fresh checkout,
+follow `setup/fresh-install.md` first.
+
 Check packages and task registration with the repo interpreter:
 
 ```bash
@@ -19,6 +22,7 @@ For RL command shape, prefer the unified entrypoints:
 
 ```bash
 ./isaaclab.sh train --rl_library rsl_rl --task Isaac-Cartpole-v0 --max_iterations 1
+./isaaclab.sh train --rl_library rsl_rl --task Isaac-Cartpole-Direct-v0 presets=newton_mjwarp --viz newton --max_iterations 1
 ./isaaclab.sh play --rl_library rsl_rl --task Isaac-Cartpole-v0 --num_envs 32 --checkpoint /path/to/model.pt
 ```
 

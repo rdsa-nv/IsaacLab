@@ -22,6 +22,11 @@ Use `./isaaclab.sh` for Isaac Lab commands. For Python snippets or scripts, use
 `./isaaclab.sh -p`; do not use bare `python` unless you are inspecting a
 non-Isaac-Lab helper outside the repo.
 
+For a bare setup/install request, default to the Newton-focused kitless `uv`
+flow in [Install](setup/fresh-install.md). Do not run `./isaaclab.sh --help`
+before a Python 3.12 environment is active; on fresh systems the wrapper can
+fall back to system Python and fail before it can show useful help.
+
 ## References
 
 Setup:
