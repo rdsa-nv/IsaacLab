@@ -1,0 +1,107 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+# yaml-language-server: $schema=https://schema.buildwithfern.dev/docs-yml.json
+
+instances:
+  - url: isaaclab.docs.buildwithfern.com
+
+title: Isaac Lab Documentation
+
+layout:
+  page-width: full
+  searchbar-placement: header
+
+theme:
+  page-actions: toolbar
+  footer-nav: minimal
+
+colors:
+  accent-primary:
+    dark: "#76B900"
+    light: "#315500"
+  background:
+    dark: "#111111"
+    light: "#FFFFFF"
+
+logo:
+  dark: generated/assets/NVIDIA-logo-white.png
+  light: generated/assets/NVIDIA-logo-black.png
+  height: 24
+  href: https://isaaclab.docs.buildwithfern.com
+
+favicon: generated/assets/favicon.ico
+
+navbar-links:
+  - type: github
+    value: https://github.com/isaac-sim/IsaacLab
+  - type: minimal
+    text: Isaac Sim
+    url: https://developer.nvidia.com/isaac-sim
+
+libraries:
+  isaac-lab:
+    input:
+      path: ../source
+    output:
+      path: ./generated/api
+    lang: python
+
+navigation:
+  - section: Isaac Lab
+    skip-slug: true
+    contents:
+      - page: Welcome
+        path: generated/index.mdx
+      - folder: generated/pages/setup
+        title: Setup
+        title-source: frontmatter
+      - folder: generated/pages/deployment
+        title: Deployment
+        title-source: frontmatter
+  - section: Learn
+    skip-slug: true
+    contents:
+      - folder: generated/pages/tutorials
+        title: Tutorials
+        title-source: frontmatter
+      - folder: generated/pages/how-to
+        title: How-to Guides
+        title-source: frontmatter
+      - folder: generated/pages/overview
+        title: Concepts and Workflows
+        title-source: frontmatter
+      - folder: generated/pages/testing
+        title: Testing
+        title-source: frontmatter
+  - section: Capabilities
+    skip-slug: true
+    contents:
+      - folder: generated/pages/features
+        title: Features
+        title-source: frontmatter
+      - folder: generated/pages/experimental-features
+        title: Experimental Features
+        title-source: frontmatter
+        availability: in-development
+      - folder: generated/pages/policy_deployment
+        title: Policy Deployment
+        title-source: frontmatter
+  - section: Resources
+    skip-slug: true
+    contents:
+      - folder: generated/pages/migration
+        title: Migration Guides
+        title-source: frontmatter
+      - folder: generated/pages/refs
+        title: References
+        title-source: frontmatter
+  - section: Source API
+    skip-slug: true
+    contents:
+      - folder: generated/api
+        title: API Reference
+        title-source: frontmatter
+        slug: api

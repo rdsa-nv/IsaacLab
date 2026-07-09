@@ -5,12 +5,13 @@
 
 """Misc commands"""
 
+import json
+
 from ..utils import (
     ISAACLAB_ROOT,
     extract_isaacsim_exe,
     extract_python_exe,
     get_pip_command,
-    is_windows,
     print_info,
     print_warning,
     run_command,
@@ -77,39 +78,27 @@ def command_vscode_settings() -> None:
 
 
 def command_build_docs() -> None:
-    """Build the documentation."""
-    print_info("Building documentation...")
+    """Generate and preview the documentation with Fern."""
+    print_info("Generating Fern documentation...")
     python_exe = extract_python_exe()
     docs_dir = ISAACLAB_ROOT / "docs"
+    fern_dir = ISAACLAB_ROOT / "fern"
 
-    # Install reqs.
     pip_cmd = get_pip_command(python_exe)
     run_command(
         pip_cmd + ["install", "-r", "requirements.txt"],
         cwd=docs_dir,
     )
 
-    # Build
-    # sphinx-build -b html -d _build/doctrees . _build/current
-    # using python -m sphinx.
-    out_dir = docs_dir / "_build" / "current"
-    cmd = [
-        python_exe,
-        "-m",
-        "sphinx",
-        "-b",
-        "html",
-        "-d",
-        "_build/doctrees",
-        ".",
-        str(out_dir),
-    ]
-    run_command(cmd, cwd=docs_dir)
+    generator = ISAACLAB_ROOT / "tools" / "docs" / "build_fern.py"
+    run_command([python_exe, str(generator)])
 
-    index_path = out_dir / "index.html"
-    print_info(f"Documentation built at {index_path}")
-    if not is_windows():
-        print_info(f"Open with: xdg-open {index_path}")
+    config = json.loads((fern_dir / "fern.config.json").read_text())
+    fern_command = ["npx", "--yes", f"fern-api@{config['version']}"]
+    run_command(fern_command + ["docs", "md", "generate", "--local"], cwd=fern_dir)
+
+    print_info("Starting the Fern preview server...")
+    run_command(fern_command + ["docs", "dev"], cwd=fern_dir)
 
 
 def command_run_docker(args: list[str]) -> None:

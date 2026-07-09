@@ -1,75 +1,37 @@
-# Building Documentation
+<!--
+Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+All rights reserved.
 
-We use [Sphinx](https://www.sphinx-doc.org/en/master/) with the [Book Theme](https://sphinx-book-theme.readthedocs.io/en/stable/) for maintaining and generating our documentation.
+SPDX-License-Identifier: BSD-3-Clause
+-->
 
-> **Note:** To avoid dependency conflicts, we strongly recommend using a Python virtual environment to isolate the required dependencies from your system's global Python environment.
+# Building documentation
 
-## Current-Version Documentation
+Isaac Lab uses [Fern](https://buildwithfern.com/docs) to preview and publish its documentation. The existing reStructuredText pages remain the source of truth and are converted to Fern-compatible MDX during each build. Fern's library reference generator produces the Python source API directly from `source/`.
 
-This section describes how to build the documentation for the current version of the project.
+## Local preview
 
-<details open>
-<summary><strong>Linux</strong></summary>
-
-```bash
-# 1. Navigate to the docs directory and install dependencies
-cd docs
-pip install -r requirements.txt
-
-# 2. Build the current documentation
-make current-docs
-
-# 3. Open the current docs
-xdg-open _build/current/index.html
-```
-</details>
-
-<details> <summary><strong>Windows</strong></summary>
-
-```batch
-:: 1. Navigate to the docs directory and install dependencies
-cd docs
-pip install -r requirements.txt
-
-:: 2. Build the current documentation
-make current-docs
-
-:: 3. Open the current docs
-start _build\current\index.html
-```
-</details>
-
-
-## Multi-Version Documentation
-
-This section describes how to build the multi-version documentation, which includes previous tags and the main branch.
-
-<details open> <summary><strong>Linux</strong></summary>
+Install Node.js 20 or newer and Docker, then run:
 
 ```bash
-# 1. Navigate to the docs directory and install dependencies
-cd docs
-pip install -r requirements.txt
-
-# 2. Build the multi-version documentation
-make multi-docs
-
-# 3. Open the multi-version docs
-xdg-open _build/index.html
+./isaaclab.sh -d
 ```
-</details>
 
-<details> <summary><strong>Windows</strong></summary>
+The command installs the Python converter dependency, generates the guide and source API pages, and starts Fern's local development server.
 
-```batch
-:: 1. Navigate to the docs directory and install dependencies
-cd docs
-pip install -r requirements.txt
+To run each step directly:
 
-:: 2. Build the multi-version documentation
-make multi-docs
-
-:: 3. Open the multi-version docs
-start _build\index.html
+```bash
+uv venv
+uv pip install -r docs/requirements.txt
+.venv/bin/python tools/docs/build_fern.py
+cd fern
+npx --yes fern-api@5.67.1 docs md generate --local
+npx --yes fern-api@5.67.1 docs dev
 ```
-</details>
+
+Generated content lives under `fern/generated/` and is intentionally ignored by Git.
+
+## Preview and publish
+
+The Docs workflow validates every branch and pull request. When `FERN_TOKEN` is configured, pull requests receive shareable Fern previews. Scheduled and manually dispatched runs from the upstream repository publish `isaaclab.docs.buildwithfern.com`.

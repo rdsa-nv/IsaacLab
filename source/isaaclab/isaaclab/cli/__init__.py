@@ -191,7 +191,7 @@ def cli() -> None:
         "-d",
         "--docs",
         action="store_true",
-        help="Build the documentation from source using sphinx.",
+        help="Generate the documentation and start a local Fern preview.",
     )
     parser.add_argument(
         "-n",
