@@ -34,7 +34,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v6
       with:
-        ref: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'develop' || github.ref }}
+        ref: ${{ github.event_name == 'schedule' && 'develop' || github.ref }}
 
     - name: Set up uv
       uses: astral-sh/setup-uv@v6
@@ -74,6 +74,7 @@ jobs:
       if: >-
         env.FERN_TOKEN != '' &&
         github.repository == env.REPO_NAME &&
-        (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        (github.event_name == 'schedule' ||
+        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop'))
       working-directory: ./fern
       run: fern generate --docs
