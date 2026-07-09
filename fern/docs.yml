@@ -42,11 +42,83 @@ navbar-links:
     url: https://developer.nvidia.com/isaac-sim
 
 libraries:
-  isaac-lab:
+  isaaclab:
     input:
-      path: ../source
+      path: ../source/isaaclab
     output:
-      path: ./generated/api
+      path: ./generated/api/isaaclab
+    lang: python
+  isaaclab-assets:
+    input:
+      path: ../source/isaaclab_assets
+    output:
+      path: ./generated/api/isaaclab-assets
+    lang: python
+  isaaclab-contrib:
+    input:
+      path: ../source/isaaclab_contrib
+    output:
+      path: ./generated/api/isaaclab-contrib
+    lang: python
+  isaaclab-experimental:
+    input:
+      path: ../source/isaaclab_experimental
+    output:
+      path: ./generated/api/isaaclab-experimental
+    lang: python
+  isaaclab-mimic:
+    input:
+      path: ../source/isaaclab_mimic
+    output:
+      path: ./generated/api/isaaclab-mimic
+    lang: python
+  isaaclab-newton:
+    input:
+      path: ../source/isaaclab_newton
+    output:
+      path: ./generated/api/isaaclab-newton
+    lang: python
+  isaaclab-ov:
+    input:
+      path: ../source/isaaclab_ov
+    output:
+      path: ./generated/api/isaaclab-ov
+    lang: python
+  isaaclab-ovphysx:
+    input:
+      path: ../source/isaaclab_ovphysx
+    output:
+      path: ./generated/api/isaaclab-ovphysx
+    lang: python
+  isaaclab-physx:
+    input:
+      path: ../source/isaaclab_physx
+    output:
+      path: ./generated/api/isaaclab-physx
+    lang: python
+  isaaclab-rl:
+    input:
+      path: ../source/isaaclab_rl
+    output:
+      path: ./generated/api/isaaclab-rl
+    lang: python
+  isaaclab-tasks:
+    input:
+      path: ../source/isaaclab_tasks
+    output:
+      path: ./generated/api/isaaclab-tasks
+    lang: python
+  isaaclab-teleop:
+    input:
+      path: ../source/isaaclab_teleop
+    output:
+      path: ./generated/api/isaaclab-teleop
+    lang: python
+  isaaclab-visualizers:
+    input:
+      path: ../source/isaaclab_visualizers
+    output:
+      path: ./generated/api/isaaclab-visualizers
     lang: python
 
 navigation:
